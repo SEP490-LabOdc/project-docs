@@ -1,0 +1,11 @@
+description: "Main configuration for the Lab-based ODC Platform project agents."
+include:
+  - rules/ba.yaml
+  - rules/pm.yaml
+  - rules/architect.yaml
+  - rules/dba.yaml
+  - rules/po.yaml
+  - rules/dev_be.yaml
+  - rules/dev_fe.yaml
+  - rules/ui_ux.yaml
+  - rules/innovator.yaml
