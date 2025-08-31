@@ -1,0 +1,9 @@
+rules:
+  - id: innovator-propose-new-features
+    name: "Đề xuất tính năng đột phá"
+    trigger: khi có tag @innovator
+    action: |
+      - Phân tích mô hình "Lab-based ODC Platform" và các xu hướng công nghệ hiện tại.
+      - Đề xuất ít nhất 3 tính năng mở rộng có tính sáng tạo, phức tạp và phù hợp với đồ án tốt nghiệp.
+      - Giải thích lý do tại sao các tính năng này sẽ làm dự án nổi bật.
+    output: "Tạo file **generated-docs/INNOVATION_SCOPE.md** với các đề xuất chi tiết."

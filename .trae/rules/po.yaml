@@ -1,0 +1,10 @@
+rules:
+  - id: po-define-user-stories
+    name: "Định nghĩa User Story"
+    trigger: khi có tag @po
+    action: |
+      - Dựa trên các main flows và use case đã phân tích.
+      - Phá vỡ các tính năng thành user story chi tiết.
+      - Viết acceptance criteria (tiêu chí chấp nhận) rõ ràng cho mỗi story.
+      - Xác định các ưu tiên ban đầu cho từng story.
+    output: "Tạo file **generated-docs/USER_STORIES.md** với user story và acceptance criteria."

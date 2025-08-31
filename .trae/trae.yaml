@@ -9,3 +9,5 @@ include:
   - rules/dev_fe.yaml
   - rules/ui_ux.yaml
   - rules/innovator.yaml
+  - rules/devops.yaml
+  - rules/qa.yaml

@@ -1,0 +1,9 @@
+rules:
+  - id: ba-analyze-requirements
+    name: "Phân tích và Định nghĩa luồng"
+    trigger: khi có tag @ba
+    action: |
+      - Phân tích yêu cầu dự án "Lab-based ODC Platform".
+      - Xác định các actor và use case chính dựa trên mô tả.
+      - Định nghĩa 6 main business flows, mô tả sự tương tác giữa các actors.
+    output: "Tạo file **generated-docs/BUSINESS_FLOWS.md** với nội dung phân tích chi tiết."

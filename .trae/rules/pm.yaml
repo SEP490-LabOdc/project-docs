@@ -1,0 +1,10 @@
+rules:
+  - id: pm-plan-project-phases
+    name: "Lập kế hoạch các giai đoạn dự án"
+    trigger: khi có tag @pm
+    action: |
+      - Dựa trên các user story và phạm vi dự án.
+      - Chia dự án thành 4 giai đoạn chính trong 16 tuần.
+      - Đặt mục tiêu và các mốc quan trọng (milestones) cho mỗi giai đoạn.
+      - Gợi ý phân công công việc cho một team 5 người.
+    output: "Tạo file **generated-docs/MILESTONES.md** với timeline và phân công công việc."
