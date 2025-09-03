@@ -4,10 +4,12 @@
 
 Kiến trúc microservices được thiết kế cho Lab-based ODC Platform sử dụng Spring Boot, Kafka và Redis, nhằm đáp ứng các yêu cầu về khả năng mở rộng, tính linh hoạt và hiệu suất cao.
 
+```
+
 +------------------+     +------------------+     +------------------+
 |                  |     |                  |     |                  |
-|  Client Apps     |---->|  API Gateway    |---->|  Microservices   |
-|  (Web/Mobile)    |     |  (Spring Cloud) |     |  (Spring Boot)   |
+|  Client Apps     |---->|  API Gateway     |---->|  Microservices   |
+|  (Web/Mobile)    |     |  (Spring Cloud)  |     |  (Spring Boot)   |
 |                  |     |                  |     |                  |
 +------------------+     +------------------+     +------------------+
 |
@@ -22,7 +24,7 @@ Kiến trúc microservices được thiết kế cho Lab-based ODC Platform sử
 +------------------+            |
 |                  |            |
 |  Config Server   |<-----------+
-|  (Spring Cloud) |            |
+|  (Spring Cloud)  |            |
 |                  |            |
 +------------------+            |
 |
@@ -47,6 +49,8 @@ Kiến trúc microservices được thiết kế cho Lab-based ODC Platform sử
 |  (PostgreSQL)    |
 |                  |
 +------------------+
+
+```
 
 
 ## Thành Phần Chính
@@ -187,6 +191,7 @@ Kiến trúc microservices được thiết kế cho Lab-based ODC Platform sử
 
 Mỗi microservice sẽ tuân theo cấu trúc dự án Spring Boot tiêu chuẩn:
 
+```
 service-name/
 ├── src/
 │   ├── main/
@@ -209,7 +214,8 @@ service-name/
 │           └── com/odc/servicename/
 ├── pom.xml
 └── README.md
-
+```
+-----
 
 ## Triển Khai và Giám Sát
 
