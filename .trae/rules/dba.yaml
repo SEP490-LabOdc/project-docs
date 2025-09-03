@@ -1,0 +1,13 @@
+rules:
+  - id: dba-design-database-schema
+    name: "Thiết kế Database Schema"
+    trigger: khi có tag @dba
+    action: |
+      - Phân tích tất cả các main flows để xác định các thực thể và mối quan hệ.
+      - Thiết kế database schema chi tiết, sử dụng UUID làm primary key cho tất cả các bảng.
+      - Đề xuất loại cơ sở dữ liệu phù hợp cho từng phần của hệ thống:
+          - PostgreSQL: Dành cho dữ liệu quan hệ, cần tính toàn vẹn cao (ví dụ: thông tin người dùng, hợp đồng, dự án).
+          - MongoDB: Dành cho dữ liệu phi cấu trúc hoặc cần linh hoạt (ví dụ: hồ sơ cá nhân, feedback, log hệ thống).
+          - Elasticsearch: Dành cho các chức năng tìm kiếm toàn văn và phân tích dữ liệu hiệu quả (ví dụ: tìm kiếm tài năng, tìm kiếm khóa học).
+      - Đưa ra sơ đồ ERD (Entity-Relationship Diagram) dưới dạng mã Mermaid.
+    output: "Tạo file generated-docs/DATABASE_SCHEMA.md với mô tả chi tiết."
