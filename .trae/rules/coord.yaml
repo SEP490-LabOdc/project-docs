@@ -1,0 +1,10 @@
+rules:
+  - id: coord-ba-ui-sprint
+    name: "Phối hợp BA & UI/UX"
+    trigger: khi có tag @coord
+    action: |
+      - Phân tích yêu cầu được cung cấp.
+      - Giao nhiệm vụ cho @ba để xác định các yếu tố nghiệp vụ (business flows, use cases).
+      - Giao nhiệm vụ cho @ui_ux để thiết kế giao diện dựa trên các yếu tố nghiệp vụ.
+      - Giao nhiệm vụ cho @pm để ước tính thời gian hoàn thành task.
+    output: "Tạo các file tài liệu từ các agents tương ứng."

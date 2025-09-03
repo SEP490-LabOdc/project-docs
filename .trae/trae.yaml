@@ -11,3 +11,4 @@ include:
   - rules/innovator.yaml
   - rules/devops.yaml
   - rules/qa.yaml
+  - rules/coord.yaml
