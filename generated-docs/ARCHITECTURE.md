@@ -24,7 +24,7 @@ Kiến trúc microservices được thiết kế cho Lab-based ODC Platform sử
 +------------------+            |
 |                  |            |
 |  Config Server   |<-----------+
-|  (Spring Cloud) |            |
+|  (Spring Cloud)  |            |
 |                  |            |
 +------------------+            |
 |
