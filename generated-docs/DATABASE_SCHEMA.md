@@ -11,6 +11,15 @@ Dựa trên phân tích các main flows và kiến trúc hệ thống, database 
 - Hệ thống ghép nối dựa trên kỹ năng
 - Marketplace cho các dự án mini
 - Nền tảng học tập tương tác
+- Audit trail và logging
+- Notification system
+
+### Cải tiến so với phiên bản trước:
+- Bổ sung audit tables cho tracking thay đổi
+- Thêm notification system
+- Cải thiện indexing và constraints
+- Tối ưu hóa cấu trúc MongoDB collections
+- ERD được vẽ bằng ASCII art thay vì PlantUML
 
 ## 2. Lựa chọn cơ sở dữ liệu
 
@@ -368,6 +377,114 @@ CREATE TABLE matching_results (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Indexes for better performance
+CREATE INDEX idx_matching_results_job_id ON matching_results(job_id);
+CREATE INDEX idx_matching_results_talent_id ON matching_results(talent_id);
+CREATE INDEX idx_matching_results_score ON matching_results(match_score DESC);
+```
+
+### Audit Trail Schema
+
+```sql
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_name VARCHAR(100) NOT NULL,
+    record_id UUID NOT NULL,
+    action VARCHAR(20) NOT NULL, -- INSERT, UPDATE, DELETE
+    old_values JSONB,
+    new_values JSONB,
+    changed_by UUID NOT NULL REFERENCES users(id),
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ip_address INET,
+    user_agent TEXT
+);
+
+CREATE INDEX idx_audit_logs_table_record ON audit_logs(table_name, record_id);
+CREATE INDEX idx_audit_logs_changed_by ON audit_logs(changed_by);
+CREATE INDEX idx_audit_logs_changed_at ON audit_logs(changed_at);
+```
+
+### Notification System Schema
+
+```sql
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL, -- info, warning, error, success
+    entity_type VARCHAR(50), -- project, team, contract, etc.
+    entity_id UUID,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    read_at TIMESTAMP
+);
+
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = false;
+CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+
+CREATE TABLE notification_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    notification_type VARCHAR(50) NOT NULL,
+    email_enabled BOOLEAN NOT NULL DEFAULT true,
+    push_enabled BOOLEAN NOT NULL DEFAULT true,
+    sms_enabled BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, notification_type)
+);
+```
+
+### Additional Indexes for Performance Optimization
+
+```sql
+-- Users table indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_status ON users(status);
+
+-- Businesses table indexes
+CREATE INDEX idx_businesses_industry ON businesses(industry);
+CREATE INDEX idx_businesses_size ON businesses(size);
+CREATE INDEX idx_businesses_status ON businesses(status);
+
+-- Talents table indexes
+CREATE INDEX idx_talents_user_id ON talents(user_id);
+CREATE INDEX idx_talents_availability ON talents(availability);
+CREATE INDEX idx_talents_experience ON talents(years_of_experience);
+
+-- Talent skills indexes
+CREATE INDEX idx_talent_skills_talent_id ON talent_skills(talent_id);
+CREATE INDEX idx_talent_skills_skill_id ON talent_skills(skill_id);
+CREATE INDEX idx_talent_skills_proficiency ON talent_skills(proficiency_level);
+
+-- Projects table indexes
+CREATE INDEX idx_projects_business_id ON projects(business_id);
+CREATE INDEX idx_projects_team_id ON projects(team_id);
+CREATE INDEX idx_projects_status ON projects(status);
+CREATE INDEX idx_projects_dates ON projects(start_date, end_date);
+
+-- ODC Teams indexes
+CREATE INDEX idx_odc_teams_business_id ON odc_teams(business_id);
+CREATE INDEX idx_odc_teams_status ON odc_teams(status);
+
+-- Team members indexes
+CREATE INDEX idx_team_members_team_id ON team_members(team_id);
+CREATE INDEX idx_team_members_talent_id ON team_members(talent_id);
+CREATE INDEX idx_team_members_status ON team_members(status);
+
+-- Marketplace projects indexes
+CREATE INDEX idx_marketplace_projects_business_id ON marketplace_projects(business_id);
+CREATE INDEX idx_marketplace_projects_status ON marketplace_projects(status);
+CREATE INDEX idx_marketplace_projects_budget ON marketplace_projects(budget_min, budget_max);
+
+-- Course enrollments indexes
+CREATE INDEX idx_course_enrollments_course_id ON course_enrollments(course_id);
+CREATE INDEX idx_course_enrollments_user_id ON course_enrollments(user_id);
+CREATE INDEX idx_course_enrollments_status ON course_enrollments(status);
 ```
 
 ## 4. MongoDB Collections
@@ -556,481 +673,385 @@ CREATE TABLE matching_results (
 
 ### 6.1. Quản lý người dùng và phân quyền
 
-```plantuml
-@startuml
+```
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│           USERS             │       │        USER_ROLES           │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│  email (VARCHAR)            │       │  name (VARCHAR)             │
+│  password_hash (VARCHAR)    │       │  description (TEXT)         │
+│  full_name (VARCHAR)        │       │  created_at (TIMESTAMP)    │
+│  phone (VARCHAR)            │       │  updated_at (TIMESTAMP)    │
+│  role (VARCHAR)             │       └─────────────────────────────┘
+│  status (VARCHAR)           │                       │
+│  created_at (TIMESTAMP)     │                       │ 1
+│  updated_at (TIMESTAMP)     │                       │
+└─────────────────────────────┘                       │
+              │                                       │
+              │ 1                                     │
+              │                                       │
+              │                                       │ *
+              │               ┌─────────────────────────────┐
+              │               │    USER_ROLE_MAPPINGS       │
+              │               ├─────────────────────────────┤
+              │               │ *id (UUID) [PK]             │
+              └───────────────>│ *user_id (UUID) [FK]        │
+                              │ *role_id (UUID) [FK]        │<─────┘
+                              │  created_at (TIMESTAMP)    │
+                              └─────────────────────────────┘
 
-' Định nghĩa style cho các entity
-skinparam class {
-    BackgroundColor white
-    ArrowColor black
-    BorderColor black
-}
-
-entity "USERS" as users {
-    *id : UUID <<PK>>
-    --
-    email : string
-    password_hash : string
-    full_name : string
-    phone : string
-    role : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "USER_ROLES" as roles {
-    *id : UUID <<PK>>
-    --
-    name : string
-    description : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "USER_PERMISSIONS" as permissions {
-    *id : UUID <<PK>>
-    --
-    *role_id : UUID <<FK>>
-    permission : string
-    created_at : timestamp
-}
-
-entity "USER_ROLE_MAPPINGS" as role_mappings {
-    *id : UUID <<PK>>
-    --
-    *user_id : UUID <<FK>>
-    *role_id : UUID <<FK>>
-    created_at : timestamp
-}
-
-users ||--o{ role_mappings : "có"
-roles ||--o{ role_mappings : "được gán cho"
-roles ||--o{ permissions : "có"
-
-@enduml
+                              ┌─────────────────────────────┐
+                              │      USER_PERMISSIONS       │
+                              ├─────────────────────────────┤
+                              │ *id (UUID) [PK]             │
+                              │ *role_id (UUID) [FK]        │<─────┐
+                              │  permission (VARCHAR)       │      │
+                              │  created_at (TIMESTAMP)    │      │ *
+                              └─────────────────────────────┘      │
+                                                                   │
+                              ┌─────────────────────────────┐      │
+                              │        USER_ROLES           │      │
+                              │         (reference)         │──────┘
+                              └─────────────────────────────┘
 ```
 
 ### 6.2. Quản lý doanh nghiệp và yêu cầu
 
-```plantuml
-@startuml
+```
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│         BUSINESSES          │       │           USERS             │
+├─────────────────────────────┤       │         (reference)         │
+│ *id (UUID) [PK]             │       └─────────────────────────────┘
+│  name (VARCHAR)             │                       │
+│  email (VARCHAR)            │                       │ 1
+│  phone (VARCHAR)            │                       │
+│  address (TEXT)             │                       │
+│  industry (VARCHAR)         │                       │ *
+│  size (VARCHAR)             │       ┌─────────────────────────────┐
+│  status (VARCHAR)           │       │      BUSINESS_CONTACTS      │
+│  created_at (TIMESTAMP)     │       ├─────────────────────────────┤
+│  updated_at (TIMESTAMP)     │       │ *id (UUID) [PK]             │
+└─────────────────────────────┘       │ *business_id (UUID) [FK]    │<──┐
+              │                       │ *user_id (UUID) [FK]        │   │
+              │ 1                     │  position (VARCHAR)         │   │
+              │                       │  is_primary (BOOLEAN)       │   │
+              │                       │  created_at (TIMESTAMP)    │   │
+              │                       │  updated_at (TIMESTAMP)    │   │
+              │                       └─────────────────────────────┘   │
+              │                                                         │
+              │ *                                                       │
+              │               ┌─────────────────────────────┐           │
+              │               │   BUSINESS_REQUIREMENTS     │           │
+              │               ├─────────────────────────────┤           │
+              │               │ *id (UUID) [PK]             │           │
+              └───────────────>│ *business_id (UUID) [FK]    │───────────┘
+                              │  title (VARCHAR)            │
+                              │  description (TEXT)         │
+                              │  team_size (INT)            │
+                              │  duration (VARCHAR)         │
+                              │  contract_type (VARCHAR)    │
+                              │  status (VARCHAR)           │
+                              │  created_at (TIMESTAMP)    │
+                              │  updated_at (TIMESTAMP)    │
+                              └─────────────────────────────┘
+                                            │
+                                            │ 1
+                                            │
+                                            │ *
+                              ┌─────────────────────────────┐
+                              │     REQUIREMENT_SKILLS      │
+                              ├─────────────────────────────┤
+                              │ *id (UUID) [PK]             │
+                              │ *requirement_id (UUID) [FK] │<─────┘
+                              │ *skill_id (UUID) [FK]       │<──┐
+                              │  experience_level (VARCHAR) │   │
+                              │  created_at (TIMESTAMP)    │   │
+                              └─────────────────────────────┘   │
+                                                                │
+                              ┌─────────────────────────────┐   │
+                              │           SKILLS            │   │
+                              │         (reference)         │───┘
+                              └─────────────────────────────┘
 
-' Định nghĩa style cho các entity
-skinparam class {
-    BackgroundColor white
-    ArrowColor black
-    BorderColor black
-}
-
-entity "BUSINESSES" as businesses {
-    *id : UUID <<PK>>
-    --
-    name : string
-    email : string
-    phone : string
-    address : string
-    industry : string
-    size : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "BUSINESS_CONTACTS" as contacts {
-    *id : UUID <<PK>>
-    --
-    *business_id : UUID <<FK>>
-    *user_id : UUID <<FK>>
-    position : string
-    is_primary : boolean
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "BUSINESS_REQUIREMENTS" as requirements {
-    *id : UUID <<PK>>
-    --
-    *business_id : UUID <<FK>>
-    title : string
-    description : string
-    team_size : int
-    duration : string
-    contract_type : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "REQUIREMENT_SKILLS" as req_skills {
-    *id : UUID <<PK>>
-    --
-    *requirement_id : UUID <<FK>>
-    *skill_id : UUID <<FK>>
-    experience_level : string
-    created_at : timestamp
-}
-
-entity "CONTRACTS" as contracts {
-    *id : UUID <<PK>>
-    --
-    *business_id : UUID <<FK>>
-    requirement_id : UUID <<FK>>
-    title : string
-    description : string
-    start_date : date
-    end_date : date
-    contract_type : string
-    status : string
-    file_path : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "USERS" as users
-entity "SKILLS" as skills
-
-users ||--o{ contacts : "là"
-businesses ||--o{ contacts : "có"
-businesses ||--o{ requirements : "tạo"
-businesses ||--o{ contracts : "ký"
-requirements ||--o{ req_skills : "cần"
-requirements ||--o{ contracts : "dẫn đến"
-skills ||--o{ req_skills : "được yêu cầu cho"
-
-@enduml
+┌─────────────────────────────┐
+│          CONTRACTS          │
+├─────────────────────────────┤
+│ *id (UUID) [PK]             │
+│ *business_id (UUID) [FK]    │──────> BUSINESSES
+│  requirement_id (UUID) [FK] │──────> BUSINESS_REQUIREMENTS
+│  title (VARCHAR)            │
+│  description (TEXT)         │
+│  start_date (DATE)          │
+│  end_date (DATE)            │
+│  contract_type (VARCHAR)    │
+│  status (VARCHAR)           │
+│  file_path (VARCHAR)        │
+│  created_at (TIMESTAMP)     │
+│  updated_at (TIMESTAMP)     │
+└─────────────────────────────┘
 ```
 
 ### 6.3. Quản lý Talent Pool và kỹ năng
 
-```plantuml
-@startuml
-
-' Định nghĩa style cho các entity
-skinparam class {
-    BackgroundColor white
-    ArrowColor black
-    BorderColor black
-}
-
-entity "TALENTS" as talents {
-    *id : UUID <<PK>>
-    --
-    *user_id : UUID <<FK>>
-    education_level : string
-    years_of_experience : int
-    availability : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "SKILLS" as skills {
-    *id : UUID <<PK>>
-    --
-    name : string
-    category : string
-    description : string
-    created_at : timestamp
-}
-
-entity "TALENT_SKILLS" as talent_skills {
-    *id : UUID <<PK>>
-    --
-    *talent_id : UUID <<FK>>
-    *skill_id : UUID <<FK>>
-    proficiency_level : int
-    years_of_experience : decimal
-    verified : boolean
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "TALENT_EVALUATIONS" as evaluations {
-    *id : UUID <<PK>>
-    --
-    *talent_id : UUID <<FK>>
-    *evaluator_id : UUID <<FK>>
-    evaluation_date : date
-    overall_score : decimal
-    comments : string
-    created_at : timestamp
-}
-
-entity "USERS" as users
-
-users ||--o| talents : "là"
-talents ||--o{ talent_skills : "có"
-skills ||--o{ talent_skills : "được gán cho"
-talents ||--o{ evaluations : "nhận"
-users ||--o{ evaluations : "thực hiện"
-
-@enduml
+```
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│           USERS             │       │           SKILLS            │
+│         (reference)         │       ├─────────────────────────────┤
+└─────────────────────────────┘       │ *id (UUID) [PK]             │
+              │                       │  name (VARCHAR)             │
+              │ 1                     │  category (VARCHAR)         │
+              │                       │  description (TEXT)         │
+              │                       │  created_at (TIMESTAMP)    │
+              │ 1                     └─────────────────────────────┘
+              │                                     │
+┌─────────────────────────────┐                     │
+│          TALENTS            │                     │ 1
+├─────────────────────────────┤                     │
+│ *id (UUID) [PK]             │                     │
+│ *user_id (UUID) [FK]        │<────────────────────┘
+│  education_level (VARCHAR)  │                     │
+│  years_of_experience (INT)  │                     │ *
+│  availability (VARCHAR)     │       ┌─────────────────────────────┐
+│  status (VARCHAR)           │       │       TALENT_SKILLS         │
+│  created_at (TIMESTAMP)     │       ├─────────────────────────────┤
+│  updated_at (TIMESTAMP)     │       │ *id (UUID) [PK]             │
+└─────────────────────────────┘       │ *talent_id (UUID) [FK]      │<──┐
+              │                       │ *skill_id (UUID) [FK]       │   │
+              │ 1                     │  proficiency_level (INT)    │   │
+              │                       │  years_of_experience (DEC)  │   │
+              │                       │  verified (BOOLEAN)         │   │
+              │                       │  created_at (TIMESTAMP)    │   │
+              │                       │  updated_at (TIMESTAMP)    │   │
+              │                       └─────────────────────────────┘   │
+              │                                                         │
+              │ *                                                       │
+              │               ┌─────────────────────────────┐           │
+              │               │    TALENT_EVALUATIONS      │           │
+              │               ├─────────────────────────────┤           │
+              │               │ *id (UUID) [PK]             │           │
+              └───────────────>│ *talent_id (UUID) [FK]      │───────────┘
+                              │ *evaluator_id (UUID) [FK]   │<──┐
+                              │  evaluation_date (DATE)     │   │
+                              │  overall_score (DECIMAL)    │   │
+                              │  comments (TEXT)            │   │
+                              │  created_at (TIMESTAMP)    │   │
+                              └─────────────────────────────┘   │
+                                                                │
+                              ┌─────────────────────────────┐   │
+                              │           USERS             │   │
+                              │      (evaluator ref)        │───┘
+                              └─────────────────────────────┘
 ```
 
 ### 6.4. Quản lý ODC Team và dự án
 
-```plantuml
-@startuml
-
-' Định nghĩa style cho các entity
-skinparam class {
-    BackgroundColor white
-    ArrowColor black
-    BorderColor black
-}
-
-entity "ODC_TEAMS" as teams {
-    *id : UUID <<PK>>
-    --
-    name : string
-    *business_id : UUID <<FK>>
-    contract_id : UUID <<FK>>
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "TEAM_MEMBERS" as members {
-    *id : UUID <<PK>>
-    --
-    *team_id : UUID <<FK>>
-    *talent_id : UUID <<FK>>
-    role : string
-    join_date : date
-    end_date : date
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "TEAM_MENTORS" as mentors {
-    *id : UUID <<PK>>
-    --
-    *team_id : UUID <<FK>>
-    *mentor_id : UUID <<FK>>
-    start_date : date
-    end_date : date
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "PROJECTS" as projects {
-    *id : UUID <<PK>>
-    --
-    name : string
-    *business_id : UUID <<FK>>
-    team_id : UUID <<FK>>
-    description : string
-    start_date : date
-    end_date : date
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "PROJECT_TASKS" as tasks {
-    *id : UUID <<PK>>
-    --
-    *project_id : UUID <<FK>>
-    title : string
-    description : string
-    assignee_id : UUID <<FK>>
-    start_date : date
-    due_date : date
-    status : string
-    priority : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "PROJECT_REPORTS" as reports {
-    *id : UUID <<PK>>
-    --
-    *project_id : UUID <<FK>>
-    *reporter_id : UUID <<FK>>
-    report_date : date
-    content : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "BUSINESSES" as businesses
-entity "CONTRACTS" as contracts
-entity "TALENTS" as talents
-entity "USERS" as users
-
-businesses ||--o{ teams : "thuê"
-contracts ||--o{ teams : "thiết lập"
-teams ||--o{ members : "bao gồm"
-talents ||--o{ members : "tham gia"
-teams ||--o{ mentors : "được hướng dẫn bởi"
-users ||--o{ mentors : "cố vấn"
-businesses ||--o{ projects : "sở hữu"
-teams ||--o{ projects : "làm việc trên"
-projects ||--o{ tasks : "chứa"
-users ||--o{ tasks : "được giao"
-projects ||--o{ reports : "có"
-users ||--o{ reports : "tạo"
-
-@enduml
+```
+┌─────────────────────────────┐    ┌─────────────────────────────┐
+│         BUSINESSES          │    │         CONTRACTS           │
+│         (reference)         │    │         (reference)         │
+└─────────────────────────────┘    └─────────────────────────────┘
+              │                                  │
+              │ 1                                │ 1
+              │                                  │
+              │                ┌─────────────────────────────┐
+              │                │         ODC_TEAMS           │
+              │                ├─────────────────────────────┤
+              │                │ *id (UUID) [PK]             │
+              └────────────────>│ *business_id (UUID) [FK]    │
+                               │  contract_id (UUID) [FK]    │<─┘
+                               │  name (VARCHAR)             │
+                               │  status (VARCHAR)           │
+                               │  created_at (TIMESTAMP)     │
+                               │  updated_at (TIMESTAMP)     │
+                               └─────────────────────────────┘
+                                         │
+                                         │ 1
+                    ┌────────────────────┼────────────────────┐
+                    │                    │                    │
+                    │ *                  │ *                  │ *
+      ┌─────────────────────────────┐    │    ┌─────────────────────────────┐
+      │       TEAM_MEMBERS          │    │    │       TEAM_MENTORS          │
+      ├─────────────────────────────┤    │    ├─────────────────────────────┤
+      │ *id (UUID) [PK]             │    │    │ *id (UUID) [PK]             │
+      │ *team_id (UUID) [FK]        │<───┘    │ *team_id (UUID) [FK]        │<─┐
+      │ *talent_id (UUID) [FK]      │<──┐     │ *mentor_id (UUID) [FK]      │<─┼─┐
+      │  role (VARCHAR)             │   │     │  start_date (DATE)          │  │ │
+      │  join_date (DATE)           │   │     │  end_date (DATE)            │  │ │
+      │  end_date (DATE)            │   │     │  created_at (TIMESTAMP)     │  │ │
+      │  status (VARCHAR)           │   │     │  updated_at (TIMESTAMP)     │  │ │
+      │  created_at (TIMESTAMP)     │   │     └─────────────────────────────┘  │ │
+      │  updated_at (TIMESTAMP)     │   │                                    │ │
+      └─────────────────────────────┘   │     ┌─────────────────────────────┐  │ │
+                                        │     │          TALENTS            │  │ │
+      ┌─────────────────────────────┐   │     │         (reference)         │──┘ │
+      │          PROJECTS           │   │     └─────────────────────────────┘    │
+      ├─────────────────────────────┤   │                                        │
+      │ *id (UUID) [PK]             │   │     ┌─────────────────────────────┐    │
+      │  name (VARCHAR)             │   │     │           USERS             │    │
+      │ *business_id (UUID) [FK]    │<──┼─────│         (reference)         │────┘
+      │  team_id (UUID) [FK]        │<──┘     └─────────────────────────────┘
+      │  description (TEXT)         │                           │
+      │  start_date (DATE)          │                           │ 1
+      │  end_date (DATE)            │                           │
+      │  status (VARCHAR)           │                           │
+      │  created_at (TIMESTAMP)     │                           │ *
+      │  updated_at (TIMESTAMP)     │         ┌─────────────────────────────┐
+      └─────────────────────────────┘         │       PROJECT_TASKS         │
+                    │                         ├─────────────────────────────┤
+                    │ 1                       │ *id (UUID) [PK]             │
+                    │                         │ *project_id (UUID) [FK]     │<─┐
+                    │ *                       │  title (VARCHAR)            │  │
+      ┌─────────────────────────────┐         │  description (TEXT)         │  │
+      │      PROJECT_REPORTS        │         │  assignee_id (UUID) [FK]    │<─┼─┘
+      ├─────────────────────────────┤         │  start_date (DATE)          │  │
+      │ *id (UUID) [PK]             │         │  due_date (DATE)            │  │
+      │ *project_id (UUID) [FK]     │<────────│  status (VARCHAR)           │  │
+      │ *reporter_id (UUID) [FK]    │<────────│  priority (VARCHAR)         │  │
+      │  report_date (DATE)         │         │  created_at (TIMESTAMP)     │  │
+      │  content (TEXT)             │         │  updated_at (TIMESTAMP)     │  │
+      │  status (VARCHAR)           │         └─────────────────────────────┘  │
+      │  created_at (TIMESTAMP)     │                                          │
+      │  updated_at (TIMESTAMP)     │                                          │
+      └─────────────────────────────┘                                          │
+                                                                               │
+                               ┌─────────────────────────────┐                │
+                               │           USERS             │                │
+                               │      (task assignee)        │────────────────┘
+                               └─────────────────────────────┘
 ```
 
 ### 6.5. Marketplace và Skill Matching
 
-```plantuml
-@startuml
+```
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│         BUSINESSES          │       │           SKILLS            │
+│         (reference)         │       │         (reference)         │
+└─────────────────────────────┘       └─────────────────────────────┘
+              │                                     │
+              │ 1                                   │ 1
+              │                                     │
+              │                                     │ *
+              │ *               ┌─────────────────────────────┐
+┌─────────────────────────────┐ │  MARKETPLACE_PROJECT_SKILLS │
+│    MARKETPLACE_PROJECTS     │ ├─────────────────────────────┤
+├─────────────────────────────┤ │ *id (UUID) [PK]             │
+│ *id (UUID) [PK]             │ │ *project_id (UUID) [FK]     │<──┐
+│ *business_id (UUID) [FK]    │<┤ *skill_id (UUID) [FK]       │<──┼─┘
+│  title (VARCHAR)            │ │  created_at (TIMESTAMP)     │   │
+│  description (TEXT)         │ └─────────────────────────────┘   │
+│  budget_min (DECIMAL)       │                                   │
+│  budget_max (DECIMAL)       │                                   │
+│  duration (VARCHAR)         │                                   │
+│  status (VARCHAR)           │                                   │
+│  created_at (TIMESTAMP)     │                                   │
+│  updated_at (TIMESTAMP)     │                                   │
+└─────────────────────────────┘                                   │
+              │                                                   │
+              │ 1                                                 │
+              │                                                   │
+              │ *                                                 │
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│      MARKETPLACE_BIDS       │       │         ODC_TEAMS           │
+├─────────────────────────────┤       │         (reference)         │
+│ *id (UUID) [PK]             │       └─────────────────────────────┘
+│ *project_id (UUID) [FK]     │<──────────────────┘                 │
+│ *team_id (UUID) [FK]        │<────────────────────────────────────┘
+│  proposal (TEXT)            │
+│  price (DECIMAL)            │
+│  duration (VARCHAR)         │
+│  status (VARCHAR)           │
+│  created_at (TIMESTAMP)     │
+│  updated_at (TIMESTAMP)     │
+└─────────────────────────────┘
 
-' Định nghĩa style cho các entity
-skinparam class {
-    BackgroundColor white
-    ArrowColor black
-    BorderColor black
-}
-
-entity "MARKETPLACE_PROJECTS" as market_projects {
-    *id : UUID <<PK>>
-    --
-    *business_id : UUID <<FK>>
-    title : string
-    description : string
-    budget_min : decimal
-    budget_max : decimal
-    duration : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "MARKETPLACE_PROJECT_SKILLS" as project_skills {
-    *id : UUID <<PK>>
-    --
-    *project_id : UUID <<FK>>
-    *skill_id : UUID <<FK>>
-    created_at : timestamp
-}
-
-entity "MARKETPLACE_BIDS" as bids {
-    *id : UUID <<PK>>
-    --
-    *project_id : UUID <<FK>>
-    *team_id : UUID <<FK>>
-    proposal : string
-    price : decimal
-    duration : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "MATCHING_JOBS" as jobs {
-    *id : UUID <<PK>>
-    --
-    *business_id : UUID <<FK>>
-    title : string
-    description : string
-    team_size : int
-    duration : string
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "MATCHING_JOB_SKILLS" as job_skills {
-    *id : UUID <<PK>>
-    --
-    *job_id : UUID <<FK>>
-    *skill_id : UUID <<FK>>
-    importance : int
-    min_proficiency : int
-    created_at : timestamp
-}
-
-entity "MATCHING_RESULTS" as results {
-    *id : UUID <<PK>>
-    --
-    *job_id : UUID <<FK>>
-    *talent_id : UUID <<FK>>
-    match_score : decimal
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "BUSINESSES" as businesses
-entity "SKILLS" as skills
-entity "TALENTS" as talents
-entity "ODC_TEAMS" as teams
-
-businesses ||--o{ market_projects : "đăng"
-market_projects ||--o{ project_skills : "yêu cầu"
-skills ||--o{ project_skills : "được sử dụng trong"
-market_projects ||--o{ bids : "nhận"
-teams ||--o{ bids : "gửi"
-businesses ||--o{ jobs : "tạo"
-jobs ||--o{ job_skills : "yêu cầu"
-skills ||--o{ job_skills : "được sử dụng trong"
-jobs ||--o{ results : "tạo ra"
-talents ||--o{ results : "được ghép với"
-
-@enduml
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│         BUSINESSES          │       │           SKILLS            │
+│         (reference)         │       │         (reference)         │
+└─────────────────────────────┘       └─────────────────────────────┘
+              │                                     │
+              │ 1                                   │ 1
+              │                                     │
+              │ *                                   │ *
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│       MATCHING_JOBS         │       │    MATCHING_JOB_SKILLS      │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *business_id (UUID) [FK]    │<──────│ *job_id (UUID) [FK]         │<─┐
+│  title (VARCHAR)            │       │ *skill_id (UUID) [FK]       │<─┼─┘
+│  description (TEXT)         │       │  importance (INT)           │  │
+│  team_size (INT)            │       │  min_proficiency (INT)      │  │
+│  duration (VARCHAR)         │       │  created_at (TIMESTAMP)     │  │
+│  status (VARCHAR)           │       └─────────────────────────────┘  │
+│  created_at (TIMESTAMP)     │                                        │
+│  updated_at (TIMESTAMP)     │                                        │
+└─────────────────────────────┘                                        │
+              │                                                        │
+              │ 1                                                      │
+              │                                                        │
+              │ *                                                      │
+┌─────────────────────────────┐       ┌─────────────────────────────┐  │
+│      MATCHING_RESULTS       │       │          TALENTS            │  │
+├─────────────────────────────┤       │         (reference)         │──┘
+│ *id (UUID) [PK]             │       └─────────────────────────────┘
+│ *job_id (UUID) [FK]         │<──────────────────┘
+│ *talent_id (UUID) [FK]      │<────────────────────────────────────┘
+│  match_score (DECIMAL)      │
+│  status (VARCHAR)           │
+│  created_at (TIMESTAMP)     │
+│  updated_at (TIMESTAMP)     │
+└─────────────────────────────┘
 ```
 
 ### 6.6. Nền tảng học tập
 
-```plantuml
-@startuml
-
-' Định nghĩa style cho các entity
-skinparam class {
-    BackgroundColor white
-    ArrowColor black
-    BorderColor black
-}
-
-entity "COURSES" as courses {
-    *id : UUID <<PK>>
-    --
-    title : string
-    description : string
-    level : string
-    duration : int
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "COURSE_MODULES" as modules {
-    *id : UUID <<PK>>
-    --
-    *course_id : UUID <<FK>>
-    title : string
-    description : string
-    sequence_order : int
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "COURSE_ENROLLMENTS" as enrollments {
-    *id : UUID <<PK>>
-    --
-    *course_id : UUID <<FK>>
-    *user_id : UUID <<FK>>
-    enrollment_date : date
-    completion_date : date
-    status : string
-    created_at : timestamp
-    updated_at : timestamp
-}
-
-entity "USERS" as users
-
-courses ||--o{ modules : "chứa"
-courses ||--o{ enrollments : "có"
-users ||--o{ enrollments : "đăng ký"
-
-@enduml
+```
+┌─────────────────────────────┐
+│           USERS             │
+│         (reference)         │
+└─────────────────────────────┘
+              │
+              │ 1
+              │
+              │ *
+┌─────────────────────────────┐
+│          COURSES            │
+├─────────────────────────────┤
+│ *id (UUID) [PK]             │
+│  title (VARCHAR)            │
+│  description (TEXT)         │
+│  level (VARCHAR)            │
+│  duration (INT)             │
+│  status (VARCHAR)           │
+│  created_at (TIMESTAMP)     │
+│  updated_at (TIMESTAMP)     │
+└─────────────────────────────┘
+              │
+              │ 1
+    ┌─────────┼─────────┐
+    │         │         │
+    │ *       │ *       │
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│       COURSE_MODULES        │       │    COURSE_ENROLLMENTS      │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *course_id (UUID) [FK]      │<──────│ *course_id (UUID) [FK]      │<─┐
+│  title (VARCHAR)            │       │ *user_id (UUID) [FK]        │<─┼─┐
+│  description (TEXT)         │       │  enrollment_date (DATE)     │  │ │
+│  sequence_order (INT)       │       │  completion_date (DATE)     │  │ │
+│  created_at (TIMESTAMP)     │       │  status (VARCHAR)           │  │ │
+│  updated_at (TIMESTAMP)     │       │  created_at (TIMESTAMP)     │  │ │
+└─────────────────────────────┘       │  updated_at (TIMESTAMP)     │  │ │
+                                      └─────────────────────────────┘  │ │
+                                                                       │ │
+                              ┌─────────────────────────────┐          │ │
+                              │           USERS             │          │ │
+                              │        (student ref)        │──────────┘ │
+                              └─────────────────────────────┘            │
+                                                                         │
+                              ┌─────────────────────────────┐            │
+                              │           USERS             │            │
+                              │        (enrollee ref)       │────────────┘
+                              └─────────────────────────────┘
 ```
 ```
 
