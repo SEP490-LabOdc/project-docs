@@ -6,7 +6,7 @@ Luồng xử lý hợp đồng và chữ ký số trong hệ thống Lab-based O
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Business       │     │  Contract       │     │  Notification   │     │  User           │
+│  Business       │     │  Contract       │     │  Notification   │     │   User           │
 │  Service        │────▶│  Service        │────▶│  Service        │────▶│  (Business)     │
 └─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
         │                        ▲                                               │
