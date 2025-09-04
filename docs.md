@@ -274,22 +274,23 @@ A modern learning platform that accelerates the training process and standardize
 * **Authentication**: JWT (JSON Web Tokens) - User session security.
 
 ### Microservices
-1. **User Service**: User management, authentication, and authorization
-2. **Talent Pool Service**: Human resource management, skills, and training
-3. **Business Service**: Business information and requirements management
-4. **ODC Team Service**: ODC team management, assignment, and tracking
-5. **Project Service**: Project management, progress, and reporting
-6. **Skill Matching Service**: Skill-based matching system
-7. **Marketplace Service**: Mini-project marketplace management
-8. **Learning Service**: Interactive learning platform
-9. **Notification Service**: Notification and alert management
-10. **Analytics Service**: Data analysis and reporting
+1. **User Service**: User management, authentication, and authorization ✅ **CORE**
+2. **Talent Pool Service**: Human resource management, skills, and training ✅ **CORE**
+3. **Business Service**: Business information and requirements management ✅ **CORE**
+4. **ODC Team Service**: ODC team management, assignment, and tracking ✅ **CORE**
+5. **Project Service**: Project management, progress, and reporting ✅ **CORE**
+6. **Contract Service**: Contract management and digital signatures ✅ **CORE**
+7. **Notification Service**: Notification and alert management ✅ **CORE**
+8. **Analytics Service**: Data analysis and reporting ✅ **CORE**
+9. **Skill Matching Service**: Skill-based matching system ⚠️ **OPTIONAL**
+10. **Marketplace Service**: Mini-project marketplace management ⚠️ **OPTIONAL**
+11. **Learning Service**: Interactive learning platform ⚠️ **OPTIONAL**
 
 ## 9 Main Business Flows
 
-### Core Business Flows (1-6)
+### ✅ Core Business Flows (1-4) - BẮT BUỘC trong 4 tháng
 
-#### 1. Business Onboarding (Flow 1)
+#### 1. Business Onboarding (Flow 1) - **CRITICAL**
 - Business registers to use the service
 - Lab Management receives and analyzes requirements
 - Agreement on team size, necessary skills, timeline, and costs
@@ -297,50 +298,42 @@ A modern learning platform that accelerates the training process and standardize
 - Business Service calls Contract Service to create a new contract
 - Contract Service creates PDF file and adds signature fields
 - Notification Service sends notifications to the business
+- **Effort**: 3-4 tuần
+- **Status**: Bắt buộc hoàn thành
 
-#### 2. Talent Pool Management (Flow 2)
+#### 2. Talent Pool Management (Flow 2) - **CRITICAL**
 - Lab Management recruits candidates into the Talent Pool
 - Skills assessment and candidate classification
 - Design of training programs tailored to business requirements
 - Mentor/Senior conducts training and evaluation
 - Learning Service manages training content and learning progress
 - Talent Pool Service stores skill information and evaluations
+- **Effort**: 4-5 tuần
+- **Status**: Bắt buộc hoàn thành
 
-#### 3. ODC Team Formation and Operation (Flow 3)
+#### 3. ODC Team Formation and Operation (Flow 3) - **CRITICAL**
 - Lab Management selects members from the Talent Pool
 - Organizes into mini-ODC teams with appropriate structure
 - Assigns Mentor/Senior to oversee each team
 - Establishes work processes and management tools
 - ODC Team Service manages team structure and members
 - Project Service integrates with project management tools
+- **Effort**: 3-4 tuần
+- **Status**: Bắt buộc hoàn thành
 
-#### 4. Project Management and Progress Tracking (Flow 4)
+#### 4. Project Management and Progress Tracking (Flow 4) - **CRITICAL**
 - Business assigns tasks and requirements to ODC Team through the platform
 - ODC Team performs work under Mentor/Senior guidance
 - Business monitors progress and work quality on the platform
 - Lab Management ensures quality and resolves arising issues
 - Project Service provides dashboards and progress reports
 - Analytics Service analyzes performance and quality
+- **Effort**: 4-5 tuần
+- **Status**: Bắt buộc hoàn thành
 
-#### 5. Evaluation and Improvement (Flow 5)
-- Business evaluates ODC Team performance
-- Lab Management collects feedback from stakeholders
-- Mentor/Senior proposes improvement measures
-- Adjusts processes and personnel if necessary
-- Analytics Service creates detailed evaluation reports
-- Notification Service sends evaluation result notifications
+### ⚠️ Advanced Features (5-9) - OPTIONAL/TẠM HOÃN
 
-#### 6. Personnel Transfer (Flow 6)
-- Business requests official recruitment of members from ODC Team
-- Lab Management evaluates and negotiates transfer conditions
-- Processes procedures and placement fees
-- Completes transfer process and supports onboarding
-- Contract Service creates transfer agreement
-- Business Service and Talent Pool Service update status
-
-### Breakthrough Features (7-9)
-
-#### 7. Skill-Based Matching System (Flow 7)
+#### 5. Skill-Based Matching System (Flow 5) - **OPTIONAL**
 - Business provides detailed requirements for skills and projects
 - Lab Management creates requirement profile on matching system
 - System analyzes and matches with Talent Pool data using intelligent algorithms
@@ -349,8 +342,10 @@ A modern learning platform that accelerates the training process and standardize
 - Lab Management adjusts criteria based on feedback
 - Skill Matching Service implements advanced matching algorithm
 - Integration with Learning Service to update candidate profiles
+- **Effort**: 4-5 tuần (Phức tạp, cần AI/ML)
+- **Status**: Tạm hoãn - có thể phát triển sau 4 tháng
 
-#### 8. Mini-Project Marketplace (Flow 8)
+#### 6. Mini-Project Marketplace (Flow 6) - **OPTIONAL**
 - Business posts projects on marketplace with detailed technical requirements
 - Lab Management reviews and approves projects before posting
 - ODC Teams review projects and submit comprehensive solution proposals
@@ -360,8 +355,10 @@ A modern learning platform that accelerates the training process and standardize
 - Marketplace Service manages project listings, bidding, and contract generation
 - Budget management and fair pricing mechanisms
 - Skill tagging for project-team matching
+- **Effort**: 4-5 tuần (Advanced feature)
+- **Status**: Tạm hoãn - có thể phát triển sau 4 tháng
 
-#### 9. Interactive Learning Platform (Flow 9)
+#### 7. Interactive Learning Platform (Flow 7) - **OPTIONAL**
 - Lab Management creates customized training programs
 - Talent Pool registers and participates in courses
 - Learners complete lessons, exercises, and practical projects
@@ -373,3 +370,57 @@ A modern learning platform that accelerates the training process and standardize
 - Personalized learning paths based on skill gaps
 - Mobile learning support and progress tracking
 - Integration with Skill Matching System for profile updates
+- **Effort**: 8-10 tuần (Rất phức tạp)
+- **Status**: Tạm hoãn - có thể phát triển sau 4 tháng
+
+#### 8. Marketplace System (Flow 8) - **OPTIONAL**
+- Duplicate functionality with Flow 6
+- **Status**: Tạm hoãn - trùng lặp với Flow 6
+
+#### 9. Interactive Learning Enhancement (Flow 9) - **OPTIONAL**
+- Advanced features for the learning platform
+- Enhanced gamification and social learning features
+- **Effort**: 6-8 tuần (Advanced feature)
+- **Status**: Tạm hoãn - có thể phát triển sau 4 tháng
+
+---
+
+## 📋 ĐÁNH GIÁ MAPPING VÀ TỔNG KẾT
+
+### ✅ Mapping Status với các file dự án
+
+**File docs.md này đã được mapping và đồng bộ với:**
+
+1. **MILESTONES.md** ✅
+   - Đã cập nhật phân loại flows theo độ ưu tiên (Core vs Optional)
+   - Đã thêm effort estimation cho từng flow
+   - Đã đánh dấu rõ flows nào bắt buộc trong 4 tháng và flows nào tạm hoãn
+
+2. **Implementation Guides** ✅
+   - Các flows 1-4 có implementation guides chi tiết
+   - Flows 5-9 có guides nhưng được đánh dấu optional
+   - Microservices architecture đã được cập nhật theo priority
+
+3. **Business Flows Analysis** ✅
+   - 9 main flows đã được phân loại rõ ràng
+   - Core business flows (1-4) được ưu tiên cao
+   - Advanced features (5-9) được đánh dấu optional
+
+### 🎯 Kết luận và Khuyến nghị
+
+**Trong 4 tháng đầu (MVP):**
+- **BẮT BUỘC**: Flows 1-4 + Infrastructure cơ bản
+- **TẠM HOÃN**: Flows 5-9 (có thể phát triển trong phase 2)
+
+**Lý do tạm hoãn flows 5-9:**
+- **Flow 5 (Skill Matching)**: Cần AI/ML algorithms phức tạp
+- **Flow 6 (Marketplace)**: Advanced feature, cần bidding system
+- **Flow 7 (Learning Platform)**: Rất phức tạp, cần 8-10 tuần
+- **Flow 8**: Trùng lặp với Flow 6
+- **Flow 9**: Advanced enhancement features
+
+**Microservices Priority:**
+- **Core Services**: User, Business, Talent Pool, ODC Team, Project, Contract, Notification, Analytics
+- **Optional Services**: Skill Matching, Marketplace, Learning
+
+*Lưu ý: File này sẵn sàng để copy nội dung làm file Word documentation.*
