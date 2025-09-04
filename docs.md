@@ -285,9 +285,11 @@ A modern learning platform that accelerates the training process and standardize
 9. **Notification Service**: Notification and alert management
 10. **Analytics Service**: Data analysis and reporting
 
-## Main Business Flows
+## 9 Main Business Flows
 
-### 1. New Business Onboarding
+### Core Business Flows (1-6)
+
+#### 1. Business Onboarding (Flow 1)
 - Business registers to use the service
 - Lab Management receives and analyzes requirements
 - Agreement on team size, necessary skills, timeline, and costs
@@ -296,7 +298,7 @@ A modern learning platform that accelerates the training process and standardize
 - Contract Service creates PDF file and adds signature fields
 - Notification Service sends notifications to the business
 
-### 2. Building and Training Talent Pool
+#### 2. Talent Pool Management (Flow 2)
 - Lab Management recruits candidates into the Talent Pool
 - Skills assessment and candidate classification
 - Design of training programs tailored to business requirements
@@ -304,7 +306,7 @@ A modern learning platform that accelerates the training process and standardize
 - Learning Service manages training content and learning progress
 - Talent Pool Service stores skill information and evaluations
 
-### 3. Establishing and Operating ODC Teams
+#### 3. ODC Team Formation and Operation (Flow 3)
 - Lab Management selects members from the Talent Pool
 - Organizes into mini-ODC teams with appropriate structure
 - Assigns Mentor/Senior to oversee each team
@@ -312,7 +314,7 @@ A modern learning platform that accelerates the training process and standardize
 - ODC Team Service manages team structure and members
 - Project Service integrates with project management tools
 
-### 4. Project Management and Progress Tracking
+#### 4. Project Management and Progress Tracking (Flow 4)
 - Business assigns tasks and requirements to ODC Team through the platform
 - ODC Team performs work under Mentor/Senior guidance
 - Business monitors progress and work quality on the platform
@@ -320,7 +322,7 @@ A modern learning platform that accelerates the training process and standardize
 - Project Service provides dashboards and progress reports
 - Analytics Service analyzes performance and quality
 
-### 5. Evaluation and Improvement
+#### 5. Evaluation and Improvement (Flow 5)
 - Business evaluates ODC Team performance
 - Lab Management collects feedback from stakeholders
 - Mentor/Senior proposes improvement measures
@@ -328,7 +330,7 @@ A modern learning platform that accelerates the training process and standardize
 - Analytics Service creates detailed evaluation reports
 - Notification Service sends evaluation result notifications
 
-### 6. Personnel Transfer
+#### 6. Personnel Transfer (Flow 6)
 - Business requests official recruitment of members from ODC Team
 - Lab Management evaluates and negotiates transfer conditions
 - Processes procedures and placement fees
@@ -336,29 +338,38 @@ A modern learning platform that accelerates the training process and standardize
 - Contract Service creates transfer agreement
 - Business Service and Talent Pool Service update status
 
-### 7. Skill-Based Matching
+### Breakthrough Features (7-9)
+
+#### 7. Skill-Based Matching System (Flow 7)
 - Business provides detailed requirements for skills and projects
 - Lab Management creates requirement profile on matching system
-- System analyzes and matches with Talent Pool data
-- Suggests list of most suitable candidates with matching ratios
+- System analyzes and matches with Talent Pool data using intelligent algorithms
+- Suggests list of most suitable candidates with matching ratios and scores
 - Business views detailed profiles and selects candidates
 - Lab Management adjusts criteria based on feedback
-- Skill Matching Service implements matching algorithm
+- Skill Matching Service implements advanced matching algorithm
+- Integration with Learning Service to update candidate profiles
 
-### 8. Mini-Project Marketplace
-- Business posts projects on marketplace with detailed requirements
-- Lab Management reviews and approves projects
-- ODC Teams review projects and submit solution proposals
-- Business selects the most suitable team
+#### 8. Mini-Project Marketplace (Flow 8)
+- Business posts projects on marketplace with detailed technical requirements
+- Lab Management reviews and approves projects before posting
+- ODC Teams review projects and submit comprehensive solution proposals
+- Business selects the most suitable team through bidding process
 - Implements project with integrated management process
 - Evaluation and ranking after completion
-- Marketplace Service manages project listings and bidding
+- Marketplace Service manages project listings, bidding, and contract generation
+- Budget management and fair pricing mechanisms
+- Skill tagging for project-team matching
 
-### 9. Interactive Learning
+#### 9. Interactive Learning Platform (Flow 9)
 - Lab Management creates customized training programs
 - Talent Pool registers and participates in courses
 - Learners complete lessons, exercises, and practical projects
-- System automatically evaluates and provides feedback
+- System automatically evaluates and provides detailed feedback
 - Mentor reviews progress and provides support when needed
 - Issues certificates and badges upon completion
 - Learning Service manages content and automated assessment
+- Gamification with points, leaderboards, and rewards
+- Personalized learning paths based on skill gaps
+- Mobile learning support and progress tracking
+- Integration with Skill Matching System for profile updates
