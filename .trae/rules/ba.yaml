@@ -1,9 +1,23 @@
 rules:
   - id: ba-analyze-requirements
-    name: "Phân tích và Định nghĩa luồng"
+    name: "Phân tích và Định nghĩa luồng nghiệp vụ"
     trigger: khi có tag @ba
     action: |
-      - Phân tích yêu cầu dự án "Lab-based ODC Platform".
-      - Xác định các actor và use case chính dựa trên mô tả.
-      - Định nghĩa 6 main business flows, mô tả sự tương tác giữa các actors.
-    output: "Tạo file **generated-docs/BUSINESS_FLOWS.md** với nội dung phân tích chi tiết."
+      - Phân tích chi tiết yêu cầu dự án "Lab-based ODC Platform" bao gồm:
+        * Mô hình Lab-based ODC kết hợp đào tạo và cung cấp nhân sự
+        * 3 tính năng đột phá: Skill-Based Matching, Marketplace, Interactive Learning
+        * Các loại hợp đồng linh hoạt và quy trình chuyển giao
+      - Xác định 6 actors chính: Lab Management, Doanh nghiệp, Talent Pool, Mentor/Senior, ODC Team, Platform System
+      - Định nghĩa 9 main business flows chi tiết:
+        1. Business Onboarding (Đăng ký doanh nghiệp)
+        2. Talent Pool Management (Quản lý nguồn nhân lực)
+        3. ODC Team Setup (Thành lập team ODC)
+        4. Project Management (Quản lý dự án)
+        5. Performance Evaluation (Đánh giá hiệu suất)
+        6. Talent Transfer (Chuyển giao nhân sự)
+        7. Skill-Based Matching System
+        8. Mini-Project Marketplace
+        9. Interactive Learning Platform
+      - Mô tả chi tiết use cases và sự tương tác giữa các actors cho từng flow
+      - Phân tích các quy trình nghiệp vụ phức tạp và điểm khác biệt so với ODC truyền thống
+    output: "Tạo file **generated-docs/BUSINESS_FLOWS.md** với phân tích chi tiết 9 flows và use cases."

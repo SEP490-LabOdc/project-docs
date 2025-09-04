@@ -1,10 +1,28 @@
 rules:
   - id: po-define-user-stories
-    name: "Định nghĩa User Story"
+    name: "Định nghĩa User Stories cho Lab-based ODC Platform"
     trigger: khi có tag @po
     action: |
-      - Dựa trên các main flows và use case đã phân tích.
-      - Phá vỡ các tính năng thành user story chi tiết.
-      - Viết acceptance criteria (tiêu chí chấp nhận) rõ ràng cho mỗi story.
-      - Xác định các ưu tiên ban đầu cho từng story.
-    output: "Tạo file **generated-docs/USER_STORIES.md** với user story và acceptance criteria."
+      - Phân tích 9 main flows để tạo user stories chi tiết cho từng actor:
+        * Lab Management: Quản lý toàn bộ hệ thống, onboarding doanh nghiệp, quản lý talent pool
+        * Doanh nghiệp: Đăng ký dịch vụ, yêu cầu team, quản lý dự án, đánh giá hiệu suất
+        * Talent Pool: Đăng ký tham gia, học tập, tham gia team, phát triển kỹ năng
+        * Mentor/Senior: Hướng dẫn team, đánh giá học viên, quản lý chất lượng
+        * ODC Team: Nhận nhiệm vụ, thực hiện dự án, báo cáo tiến độ
+      - Tạo user stories cho 3 tính năng đột phá:
+        * Skill-Based Matching: Tìm kiếm, so khớp, đề xuất ứng viên
+        * Mini-Project Marketplace: Đăng dự án, đấu thầu, quản lý marketplace
+        * Interactive Learning: Học tập tương tác, gamification, theo dõi tiến độ
+      - Viết acceptance criteria chi tiết cho mỗi story bao gồm:
+        * Functional requirements (chức năng cốt lõi)
+        * Non-functional requirements (hiệu suất, bảo mật, UX)
+        * Business rules và validation logic
+        * Integration requirements với các hệ thống khác
+      - Phân loại và ưu tiên stories theo:
+        * Must-have (Core flows): Business Onboarding, Talent Pool, ODC Team Setup
+        * Should-have (Management): Project Management, Performance Evaluation
+        * Could-have (Advanced): Skill Matching, Marketplace, Learning Platform
+        * Won't-have (Future): Advanced AI features, Mobile app
+      - Ước lượng story points và effort cho từng story
+      - Định nghĩa Definition of Done cho từng loại story
+    output: "Tạo file **generated-docs/USER_STORIES.md** với stories chi tiết cho 9 flows, acceptance criteria và prioritization."

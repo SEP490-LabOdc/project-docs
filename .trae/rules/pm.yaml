@@ -1,10 +1,30 @@
 rules:
   - id: pm-plan-project-phases
-    name: "Lập kế hoạch các giai đoạn dự án"
+    name: "Lập kế hoạch dự án Lab-based ODC Platform"
     trigger: khi có tag @pm
     action: |
-      - Dựa trên các user story và phạm vi dự án.
-      - Chia dự án thành 4 giai đoạn chính trong 16 tuần.
-      - Đặt mục tiêu và các mốc quan trọng (milestones) cho mỗi giai đoạn.
-      - Gợi ý phân công công việc cho một team 5 người.
-    output: "Tạo file **generated-docs/MILESTONES.md** với timeline và phân công công việc."
+      - Phân tích phạm vi dự án dựa trên 9 main flows và 3 tính năng đột phá
+      - Chia dự án thành 4 giai đoạn chính trong 16 tuần:
+        * Phase 1 (Tuần 1-4): Core Platform & Basic Flows
+          - Business Onboarding, Talent Pool Management, ODC Team Setup
+          - Authentication, Authorization, Basic UI/UX
+        * Phase 2 (Tuần 5-8): Project Management & Evaluation
+          - Project Management Flow, Performance Evaluation
+          - Dashboard, Reporting, Notification System
+        * Phase 3 (Tuần 9-12): Advanced Features
+          - Skill-Based Matching System, Mini-Project Marketplace
+          - Advanced Analytics, Search & Filtering
+        * Phase 4 (Tuần 13-16): Learning Platform & Integration
+          - Interactive Learning Platform, Talent Transfer
+          - System Integration, Performance Optimization, Testing
+      - Định nghĩa milestones chi tiết cho từng giai đoạn:
+        * Technical milestones (Database setup, API development, Frontend components)
+        * Business milestones (Feature completion, User acceptance testing)
+        * Quality milestones (Code review, Security audit, Performance testing)
+      - Phân công công việc cho team đa chuyên môn:
+        * Backend Developer (2 người): API, Database, Business Logic
+        * Frontend Developer (2 người): UI/UX, Dashboard, Mobile-responsive
+        * Full-stack Developer (1 người): Integration, DevOps, Testing
+      - Xác định dependencies và critical path cho các tính năng phức tạp
+      - Lập kế hoạch risk management và contingency plans
+    output: "Tạo file **generated-docs/MILESTONES.md** với timeline chi tiết 16 tuần và phân công theo 9 flows."

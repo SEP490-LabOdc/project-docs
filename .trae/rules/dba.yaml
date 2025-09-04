@@ -1,13 +1,29 @@
 rules:
   - id: dba-design-database-schema
-    name: "Thiết kế Database Schema"
+    name: "Thiết kế Database Schema cho Lab-based ODC Platform"
     trigger: khi có tag @dba
     action: |
-      - Phân tích tất cả các main flows để xác định các thực thể và mối quan hệ.
-      - Thiết kế database schema chi tiết, sử dụng UUID làm primary key cho tất cả các bảng.
-      - Đề xuất loại cơ sở dữ liệu phù hợp cho từng phần của hệ thống:
-          - PostgreSQL: Dành cho dữ liệu quan hệ, cần tính toàn vẹn cao (ví dụ: thông tin người dùng, hợp đồng, dự án).
-          - MongoDB: Dành cho dữ liệu phi cấu trúc hoặc cần linh hoạt (ví dụ: hồ sơ cá nhân, feedback, log hệ thống).
-          - Elasticsearch: Dành cho các chức năng tìm kiếm toàn văn và phân tích dữ liệu hiệu quả (ví dụ: tìm kiếm tài năng, tìm kiếm khóa học).
-      - Đưa ra sơ đồ ERD (Entity-Relationship Diagram) dưới dạng mã Mermaid.
-    output: "Tạo file generated-docs/DATABASE_SCHEMA.md với mô tả chi tiết."
+      - Phân tích 9 main flows để xác định các thực thể và mối quan hệ phức tạp:
+        * Business Onboarding: Companies, Contracts, Requirements
+        * Talent Pool Management: Users, Skills, Assessments, Certifications
+        * ODC Team Setup: Teams, TeamMembers, Roles, Mentors
+        * Project Management: Projects, Tasks, Milestones, Progress
+        * Performance Evaluation: Evaluations, Feedback, Ratings
+        * Talent Transfer: Placements, TransferRequests, Fees
+        * Skill-Based Matching: SkillProfiles, MatchingCriteria, MatchingResults
+        * Mini-Project Marketplace: MarketplaceProjects, Bids, Proposals
+        * Interactive Learning: Courses, Lessons, Exercises, Achievements
+      - Thiết kế database schema chi tiết với UUID làm primary key cho tất cả bảng
+      - Đề xuất kiến trúc multi-database phù hợp:
+        * PostgreSQL (Primary): Dữ liệu quan hệ core - users, companies, contracts, teams, projects
+        * MongoDB: Dữ liệu linh hoạt - skill profiles, learning content, feedback, logs
+        * Elasticsearch: Search & Analytics - talent search, project matching, learning analytics
+        * Redis: Caching & Sessions - user sessions, matching cache, real-time data
+      - Thiết kế indexes và optimization cho:
+        * Skill-based matching queries
+        * Real-time project tracking
+        * Learning progress analytics
+        * Marketplace search and filtering
+      - Đưa ra ERD chi tiết cho từng database và mối quan hệ cross-database
+      - Định nghĩa data migration strategies và backup policies
+    output: "Tạo file generated-docs/DATABASE_SCHEMA.md với schema chi tiết cho 9 flows và kiến trúc multi-database."
