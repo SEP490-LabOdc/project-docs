@@ -554,122 +554,484 @@ CREATE TABLE matching_results (
 
 ## 6. Sơ đồ ERD
 
-```mermaid
-erDiagram
-    USERS ||--o{ USER_ROLE_MAPPINGS : has
-    USER_ROLES ||--o{ USER_ROLE_MAPPINGS : assigned_to
-    USER_ROLES ||--o{ USER_PERMISSIONS : has
-    
-    USERS ||--o{ BUSINESS_CONTACTS : is
-    BUSINESSES ||--o{ BUSINESS_CONTACTS : has
-    BUSINESSES ||--o{ BUSINESS_REQUIREMENTS : creates
-    BUSINESSES ||--o{ CONTRACTS : signs
-    BUSINESS_REQUIREMENTS ||--o{ REQUIREMENT_SKILLS : needs
-    BUSINESS_REQUIREMENTS ||--o{ CONTRACTS : leads_to
-    
-    USERS ||--o| TALENTS : is
-    TALENTS ||--o{ TALENT_SKILLS : has
-    SKILLS ||--o{ TALENT_SKILLS : assigned_to
-    SKILLS ||--o{ REQUIREMENT_SKILLS : needed_for
-    TALENTS ||--o{ TALENT_EVALUATIONS : receives
-    USERS ||--o{ TALENT_EVALUATIONS : performs
-    
-    BUSINESSES ||--o{ ODC_TEAMS : hires
-    CONTRACTS ||--o{ ODC_TEAMS : establishes
-    ODC_TEAMS ||--o{ TEAM_MEMBERS : includes
-    TALENTS ||--o{ TEAM_MEMBERS : joins
-    ODC_TEAMS ||--o{ TEAM_MENTORS : guided_by
-    USERS ||--o{ TEAM_MENTORS : mentors
-    
-    BUSINESSES ||--o{ PROJECTS : owns
-    ODC_TEAMS ||--o{ PROJECTS : works_on
-    PROJECTS ||--o{ PROJECT_TASKS : contains
-    USERS ||--o{ PROJECT_TASKS : assigned_to
-    PROJECTS ||--o{ PROJECT_REPORTS : has
-    USERS ||--o{ PROJECT_REPORTS : creates
-    
-    BUSINESSES ||--o{ MARKETPLACE_PROJECTS : posts
-    MARKETPLACE_PROJECTS ||--o{ MARKETPLACE_PROJECT_SKILLS : requires
-    SKILLS ||--o{ MARKETPLACE_PROJECT_SKILLS : used_in
-    MARKETPLACE_PROJECTS ||--o{ MARKETPLACE_BIDS : receives
-    ODC_TEAMS ||--o{ MARKETPLACE_BIDS : submits
-    
-    COURSES ||--o{ COURSE_MODULES : contains
-    COURSES ||--o{ COURSE_ENROLLMENTS : has
-    USERS ||--o{ COURSE_ENROLLMENTS : enrolls
-    
-    BUSINESSES ||--o{ MATCHING_JOBS : creates
-    MATCHING_JOBS ||--o{ MATCHING_JOB_SKILLS : requires
-    SKILLS ||--o{ MATCHING_JOB_SKILLS : used_in
-    MATCHING_JOBS ||--o{ MATCHING_RESULTS : produces
-    TALENTS ||--o{ MATCHING_RESULTS : matched_with
-    
-    USERS {
-        UUID id PK
-        string email
-        string password_hash
-        string full_name
-        string phone
-        string role
-        string status
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    BUSINESSES {
-        UUID id PK
-        string name
-        string email
-        string phone
-        string address
-        string industry
-        string size
-        string status
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    TALENTS {
-        UUID id PK
-        UUID user_id FK
-        string education_level
-        int years_of_experience
-        string availability
-        string status
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    SKILLS {
-        UUID id PK
-        string name
-        string category
-        string description
-        timestamp created_at
-    }
-    
-    ODC_TEAMS {
-        UUID id PK
-        string name
-        UUID business_id FK
-        UUID contract_id FK
-        string status
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PROJECTS {
-        UUID id PK
-        string name
-        UUID business_id FK
-        UUID team_id FK
-        string description
-        date start_date
-        date end_date
-        string status
-        timestamp created_at
-        timestamp updated_at
-    }
+### 6.1. Quản lý người dùng và phân quyền
+
+```plantuml
+@startuml
+
+' Định nghĩa style cho các entity
+skinparam class {
+    BackgroundColor white
+    ArrowColor black
+    BorderColor black
+}
+
+entity "USERS" as users {
+    *id : UUID <<PK>>
+    --
+    email : string
+    password_hash : string
+    full_name : string
+    phone : string
+    role : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "USER_ROLES" as roles {
+    *id : UUID <<PK>>
+    --
+    name : string
+    description : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "USER_PERMISSIONS" as permissions {
+    *id : UUID <<PK>>
+    --
+    *role_id : UUID <<FK>>
+    permission : string
+    created_at : timestamp
+}
+
+entity "USER_ROLE_MAPPINGS" as role_mappings {
+    *id : UUID <<PK>>
+    --
+    *user_id : UUID <<FK>>
+    *role_id : UUID <<FK>>
+    created_at : timestamp
+}
+
+users ||--o{ role_mappings : "có"
+roles ||--o{ role_mappings : "được gán cho"
+roles ||--o{ permissions : "có"
+
+@enduml
+```
+
+### 6.2. Quản lý doanh nghiệp và yêu cầu
+
+```plantuml
+@startuml
+
+' Định nghĩa style cho các entity
+skinparam class {
+    BackgroundColor white
+    ArrowColor black
+    BorderColor black
+}
+
+entity "BUSINESSES" as businesses {
+    *id : UUID <<PK>>
+    --
+    name : string
+    email : string
+    phone : string
+    address : string
+    industry : string
+    size : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "BUSINESS_CONTACTS" as contacts {
+    *id : UUID <<PK>>
+    --
+    *business_id : UUID <<FK>>
+    *user_id : UUID <<FK>>
+    position : string
+    is_primary : boolean
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "BUSINESS_REQUIREMENTS" as requirements {
+    *id : UUID <<PK>>
+    --
+    *business_id : UUID <<FK>>
+    title : string
+    description : string
+    team_size : int
+    duration : string
+    contract_type : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "REQUIREMENT_SKILLS" as req_skills {
+    *id : UUID <<PK>>
+    --
+    *requirement_id : UUID <<FK>>
+    *skill_id : UUID <<FK>>
+    experience_level : string
+    created_at : timestamp
+}
+
+entity "CONTRACTS" as contracts {
+    *id : UUID <<PK>>
+    --
+    *business_id : UUID <<FK>>
+    requirement_id : UUID <<FK>>
+    title : string
+    description : string
+    start_date : date
+    end_date : date
+    contract_type : string
+    status : string
+    file_path : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "USERS" as users
+entity "SKILLS" as skills
+
+users ||--o{ contacts : "là"
+businesses ||--o{ contacts : "có"
+businesses ||--o{ requirements : "tạo"
+businesses ||--o{ contracts : "ký"
+requirements ||--o{ req_skills : "cần"
+requirements ||--o{ contracts : "dẫn đến"
+skills ||--o{ req_skills : "được yêu cầu cho"
+
+@enduml
+```
+
+### 6.3. Quản lý Talent Pool và kỹ năng
+
+```plantuml
+@startuml
+
+' Định nghĩa style cho các entity
+skinparam class {
+    BackgroundColor white
+    ArrowColor black
+    BorderColor black
+}
+
+entity "TALENTS" as talents {
+    *id : UUID <<PK>>
+    --
+    *user_id : UUID <<FK>>
+    education_level : string
+    years_of_experience : int
+    availability : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "SKILLS" as skills {
+    *id : UUID <<PK>>
+    --
+    name : string
+    category : string
+    description : string
+    created_at : timestamp
+}
+
+entity "TALENT_SKILLS" as talent_skills {
+    *id : UUID <<PK>>
+    --
+    *talent_id : UUID <<FK>>
+    *skill_id : UUID <<FK>>
+    proficiency_level : int
+    years_of_experience : decimal
+    verified : boolean
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "TALENT_EVALUATIONS" as evaluations {
+    *id : UUID <<PK>>
+    --
+    *talent_id : UUID <<FK>>
+    *evaluator_id : UUID <<FK>>
+    evaluation_date : date
+    overall_score : decimal
+    comments : string
+    created_at : timestamp
+}
+
+entity "USERS" as users
+
+users ||--o| talents : "là"
+talents ||--o{ talent_skills : "có"
+skills ||--o{ talent_skills : "được gán cho"
+talents ||--o{ evaluations : "nhận"
+users ||--o{ evaluations : "thực hiện"
+
+@enduml
+```
+
+### 6.4. Quản lý ODC Team và dự án
+
+```plantuml
+@startuml
+
+' Định nghĩa style cho các entity
+skinparam class {
+    BackgroundColor white
+    ArrowColor black
+    BorderColor black
+}
+
+entity "ODC_TEAMS" as teams {
+    *id : UUID <<PK>>
+    --
+    name : string
+    *business_id : UUID <<FK>>
+    contract_id : UUID <<FK>>
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "TEAM_MEMBERS" as members {
+    *id : UUID <<PK>>
+    --
+    *team_id : UUID <<FK>>
+    *talent_id : UUID <<FK>>
+    role : string
+    join_date : date
+    end_date : date
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "TEAM_MENTORS" as mentors {
+    *id : UUID <<PK>>
+    --
+    *team_id : UUID <<FK>>
+    *mentor_id : UUID <<FK>>
+    start_date : date
+    end_date : date
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "PROJECTS" as projects {
+    *id : UUID <<PK>>
+    --
+    name : string
+    *business_id : UUID <<FK>>
+    team_id : UUID <<FK>>
+    description : string
+    start_date : date
+    end_date : date
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "PROJECT_TASKS" as tasks {
+    *id : UUID <<PK>>
+    --
+    *project_id : UUID <<FK>>
+    title : string
+    description : string
+    assignee_id : UUID <<FK>>
+    start_date : date
+    due_date : date
+    status : string
+    priority : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "PROJECT_REPORTS" as reports {
+    *id : UUID <<PK>>
+    --
+    *project_id : UUID <<FK>>
+    *reporter_id : UUID <<FK>>
+    report_date : date
+    content : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "BUSINESSES" as businesses
+entity "CONTRACTS" as contracts
+entity "TALENTS" as talents
+entity "USERS" as users
+
+businesses ||--o{ teams : "thuê"
+contracts ||--o{ teams : "thiết lập"
+teams ||--o{ members : "bao gồm"
+talents ||--o{ members : "tham gia"
+teams ||--o{ mentors : "được hướng dẫn bởi"
+users ||--o{ mentors : "cố vấn"
+businesses ||--o{ projects : "sở hữu"
+teams ||--o{ projects : "làm việc trên"
+projects ||--o{ tasks : "chứa"
+users ||--o{ tasks : "được giao"
+projects ||--o{ reports : "có"
+users ||--o{ reports : "tạo"
+
+@enduml
+```
+
+### 6.5. Marketplace và Skill Matching
+
+```plantuml
+@startuml
+
+' Định nghĩa style cho các entity
+skinparam class {
+    BackgroundColor white
+    ArrowColor black
+    BorderColor black
+}
+
+entity "MARKETPLACE_PROJECTS" as market_projects {
+    *id : UUID <<PK>>
+    --
+    *business_id : UUID <<FK>>
+    title : string
+    description : string
+    budget_min : decimal
+    budget_max : decimal
+    duration : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "MARKETPLACE_PROJECT_SKILLS" as project_skills {
+    *id : UUID <<PK>>
+    --
+    *project_id : UUID <<FK>>
+    *skill_id : UUID <<FK>>
+    created_at : timestamp
+}
+
+entity "MARKETPLACE_BIDS" as bids {
+    *id : UUID <<PK>>
+    --
+    *project_id : UUID <<FK>>
+    *team_id : UUID <<FK>>
+    proposal : string
+    price : decimal
+    duration : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "MATCHING_JOBS" as jobs {
+    *id : UUID <<PK>>
+    --
+    *business_id : UUID <<FK>>
+    title : string
+    description : string
+    team_size : int
+    duration : string
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "MATCHING_JOB_SKILLS" as job_skills {
+    *id : UUID <<PK>>
+    --
+    *job_id : UUID <<FK>>
+    *skill_id : UUID <<FK>>
+    importance : int
+    min_proficiency : int
+    created_at : timestamp
+}
+
+entity "MATCHING_RESULTS" as results {
+    *id : UUID <<PK>>
+    --
+    *job_id : UUID <<FK>>
+    *talent_id : UUID <<FK>>
+    match_score : decimal
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "BUSINESSES" as businesses
+entity "SKILLS" as skills
+entity "TALENTS" as talents
+entity "ODC_TEAMS" as teams
+
+businesses ||--o{ market_projects : "đăng"
+market_projects ||--o{ project_skills : "yêu cầu"
+skills ||--o{ project_skills : "được sử dụng trong"
+market_projects ||--o{ bids : "nhận"
+teams ||--o{ bids : "gửi"
+businesses ||--o{ jobs : "tạo"
+jobs ||--o{ job_skills : "yêu cầu"
+skills ||--o{ job_skills : "được sử dụng trong"
+jobs ||--o{ results : "tạo ra"
+talents ||--o{ results : "được ghép với"
+
+@enduml
+```
+
+### 6.6. Nền tảng học tập
+
+```plantuml
+@startuml
+
+' Định nghĩa style cho các entity
+skinparam class {
+    BackgroundColor white
+    ArrowColor black
+    BorderColor black
+}
+
+entity "COURSES" as courses {
+    *id : UUID <<PK>>
+    --
+    title : string
+    description : string
+    level : string
+    duration : int
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "COURSE_MODULES" as modules {
+    *id : UUID <<PK>>
+    --
+    *course_id : UUID <<FK>>
+    title : string
+    description : string
+    sequence_order : int
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "COURSE_ENROLLMENTS" as enrollments {
+    *id : UUID <<PK>>
+    --
+    *course_id : UUID <<FK>>
+    *user_id : UUID <<FK>>
+    enrollment_date : date
+    completion_date : date
+    status : string
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "USERS" as users
+
+courses ||--o{ modules : "chứa"
+courses ||--o{ enrollments : "có"
+users ||--o{ enrollments : "đăng ký"
+
+@enduml
+```
 ```
 
 ## 7. Kết luận
