@@ -28,13 +28,15 @@ With LabOdc, businesses can:
 * **Quality Assurance:** LabOdc serves as a bridge and guarantor, managing the entire process from recruitment and training to handover.
 * **Flexible Contracts:** Diverse contracts suitable for the needs of each project (monthly hire, project-based, or official recruitment).
 
-## Breakthrough Extended Features
+## Key Features of LabODC
 
 ### 1. Skill-Based Matching System
 This system helps optimize the connection between candidates from the Talent Pool and business requirements.
 * **Classification & Assessment:** Classify and evaluate candidate skills based on standardized criteria and automated tests.
 * **Intelligent Recommendations:** Suggest the most suitable candidates based on skill match and job requirements.
 * **Intuitive Dashboard:** Provide a dashboard for businesses to easily compare and select.
+* **Matching Algorithm:** Analyze and match Talent Pool data with detailed requirements for skills and projects.
+* **Matching Ratio:** Display a list of the most suitable candidates with specific matching ratios.
 
 **Value Delivered:** Reduced search time, increased success rate of ODC teams.
 
@@ -44,51 +46,60 @@ This is where businesses can post and hire ODC Teams for small and medium-sized 
 * **Bidding Mechanism:** ODC Teams can bid and propose solutions.
 * **Integrated Management:** Project management system integrated with popular tools.
 * **Evaluation & Ranking:** Businesses can evaluate teams after project completion.
+* **Project Approval:** Lab Management reviews and approves projects before posting to the marketplace.
 
-**Value Delivered:** Expanded customer base, created real-world opportunities for the Talent Pool, increased revenue from small projects.
+**Value Delivered:** Expands client base, creates practical opportunities for the Talent Pool, increases revenue from small projects.
 
 ### 3. Interactive Learning Platform
 A modern learning platform that accelerates the training process and standardizes knowledge.
 * **Diverse Content:** Rich library of courses and materials for each technology.
-* **Automated Practice:** Practical exercises with automated checking systems and sandbox.
-* **Gamification:** Using point systems, leaderboards, and rewards to increase learning motivation.
+* **Automated Practice:** Practical exercises with automated checking systems and sandbox environments.
+* **Gamification:** Point systems, leaderboards, and rewards to increase learning motivation.
+* **Automated Assessment:** System automatically evaluates and provides feedback to learners.
+* **Certificates and Badges:** Issue certificates and badges when learners complete courses.
 
-**Value Delivered:** Enhanced training quality, standardized processes, increased course completion rates for trainees.
+**Value Delivered:** Improves training quality, standardizes processes, increases course completion rates.
 # Actors
 
 ## 1. Lab Management
 * **System Management**: Manage system settings, user roles, and access permissions.
 * **Financial Monitoring**: Track payment transactions, revenue from recruitment/training services.
 * **Content Management**: Approve and manage job postings, training modules, and project proposals from businesses.
-* **Overall System Operation**: Responsible for operating the entire platform.
+* **System Operations**: Responsible for operating the entire platform.
+* **Personnel Selection**: Recruit candidates into the Talent Pool and evaluate skills.
 
 ## 2. Business
 * **Create Jobs & Projects**: Propose and submit job positions and ODC projects for approval.
 * **Team & Project Management**: Track recruitment progress, onboard candidates, assign tasks, and monitor project milestones.
 * **Communication**: Send notifications, onboarding documents, and updates to recruited IT personnel.
-* **Use ODC Services**: Customers using ODC services.
+* **Use ODC Services**: Clients using ODC services.
+* **Performance Evaluation**: Evaluate ODC Team performance and provide feedback.
 
 ## 3. Talent Pool
-* **Account & Profile Management**: Register and manage professional profiles, skills, certifications, and portfolios.
+* **Account & Profile Management**: Register and manage professional profiles, skills, certificates, and portfolios.
 * **Participate in Recruitment & Training**: Apply for jobs, participate in training modules, and join ODC project teams.
-* **Track Rewards**: View achievement points, badges, and monitor reward redemptions.
-* **Join the System**: Students, freshers, junior developers participating in the system.
+* **Track Rewards**: View achievement points, badges, and monitor reward redemption.
+* **Join the System**: Students, freshers, junior developers joining the system.
+* **Skill Development**: Participate in courses and practice to enhance skills.
 
 ## 4. Mentor/Senior
 * **Create Training Modules**: Design, submit, and manage training courses for approval.
-* **Provide Training**: Track candidate registrations, progress, and evaluations.
+* **Provide Training**: Monitor candidate registrations, progress, and evaluations.
 * **Communication**: Send materials, updates, and feedback to candidates.
-* **Guide and Ensure Quality**: Mentors and quality assurance for teams.
+* **Guide and Ensure Quality**: Guide and ensure quality for teams.
+* **Suggest Improvements**: Propose measures to improve processes and personnel.
 
 ## 5. ODC Team
 * **Implement Projects**: Development teams organized within the Lab.
 * **Report Progress**: Update work and project progress.
-* **Participate in Bidding**: Participate in bidding for mini-projects on the marketplace.
+* **Participate in Bidding**: Participate in bidding for small projects on the marketplace.
+* **Follow Processes**: Adhere to work processes and use management tools.
 
 ## 6. Platform System
 * **Platform System**: Manage and operate the entire process from recruitment, training to handover.
 * **Automation**: Automate matching processes, evaluations, and reporting.
 * **Data Analysis**: Provide insights and reports to stakeholders.
+* **Permission Management**: Assign permissions to different user roles in the system.
 # Non-functional requirements
 
 * **System Reliability**: 99.0% uptime for both the candidate/business portal and the admin dashboard.
@@ -158,53 +169,78 @@ A modern learning platform that accelerates the training process and standardize
 
 ## Main Business Flows
 
-### Flow 1: Onboarding New Businesses
-- Businesses register to use the service
+### 1. New Business Onboarding
+- Business registers to use the service
 - Lab Management receives and analyzes requirements
 - Agreement on team size, necessary skills, timeline, and costs
-- Contract signing and account setup on the platform
+- Contract signing and platform account setup
+- Business Service calls Contract Service to create a new contract
+- Contract Service creates PDF file and adds signature fields
+- Notification Service sends notifications to the business
 
-### Flow 2: Building and Training the Talent Pool
+### 2. Building and Training Talent Pool
 - Lab Management recruits candidates into the Talent Pool
 - Skills assessment and candidate classification
 - Design of training programs tailored to business requirements
-- Mentors/Seniors conduct training and evaluation
+- Mentor/Senior conducts training and evaluation
+- Learning Service manages training content and learning progress
+- Talent Pool Service stores skill information and evaluations
 
-### Flow 3: Forming and Operating ODC Teams
+### 3. Establishing and Operating ODC Teams
 - Lab Management selects members from the Talent Pool
-- Organization into mini-ODC teams with appropriate structures
-- Assignment of Mentors/Seniors to oversee each team
-- Establishment of work processes and management tools
+- Organizes into mini-ODC teams with appropriate structure
+- Assigns Mentor/Senior to oversee each team
+- Establishes work processes and management tools
+- ODC Team Service manages team structure and members
+- Project Service integrates with project management tools
 
-### Flow 4: Project Management and Progress Tracking
-- Businesses assign tasks and requirements to ODC Teams through the platform
-- ODC Teams perform work under the guidance of Mentors/Seniors
-- Businesses monitor progress and work quality on the platform
-- Lab Management ensures quality and resolves emerging issues
+### 4. Project Management and Progress Tracking
+- Business assigns tasks and requirements to ODC Team through the platform
+- ODC Team performs work under Mentor/Senior guidance
+- Business monitors progress and work quality on the platform
+- Lab Management ensures quality and resolves arising issues
+- Project Service provides dashboards and progress reports
+- Analytics Service analyzes performance and quality
 
-### Flow 5: Evaluation and Improvement
-- Businesses evaluate the performance of ODC Teams
+### 5. Evaluation and Improvement
+- Business evaluates ODC Team performance
 - Lab Management collects feedback from stakeholders
-- Mentors/Seniors propose improvement measures
-- Process and personnel adjustments if necessary
+- Mentor/Senior proposes improvement measures
+- Adjusts processes and personnel if necessary
+- Analytics Service creates detailed evaluation reports
+- Notification Service sends evaluation result notifications
 
-### Flow 6: Personnel Transfer
-- Businesses request formal recruitment of members from ODC Teams
+### 6. Personnel Transfer
+- Business requests official recruitment of members from ODC Team
 - Lab Management evaluates and negotiates transfer conditions
-- Processing of procedures and placement fees
-- Completion of the transfer process and onboarding support
+- Processes procedures and placement fees
+- Completes transfer process and supports onboarding
+- Contract Service creates transfer agreement
+- Business Service and Talent Pool Service update status
 
-### Flow 7: Skill-Based Matching
-- Businesses provide detailed requirements for skills and projects
-- The system analyzes and matches with Talent Pool data
-- Proposes a list of the most suitable candidates with matching ratios
+### 7. Skill-Based Matching
+- Business provides detailed requirements for skills and projects
+- Lab Management creates requirement profile on matching system
+- System analyzes and matches with Talent Pool data
+- Suggests list of most suitable candidates with matching ratios
+- Business views detailed profiles and selects candidates
+- Lab Management adjusts criteria based on feedback
+- Skill Matching Service implements matching algorithm
 
-### Flow 8: Mini-Project Marketplace
-- Businesses post projects on the marketplace with detailed requirements
+### 8. Mini-Project Marketplace
+- Business posts projects on marketplace with detailed requirements
+- Lab Management reviews and approves projects
 - ODC Teams review projects and submit solution proposals
-- Project implementation with integrated management processes
+- Business selects the most suitable team
+- Implements project with integrated management process
+- Evaluation and ranking after completion
+- Marketplace Service manages project listings and bidding
 
-### Flow 9: Interactive Learning
+### 9. Interactive Learning
 - Lab Management creates customized training programs
 - Talent Pool registers and participates in courses
-- The system automatically evaluates and provides feedback
+- Learners complete lessons, exercises, and practical projects
+- System automatically evaluates and provides feedback
+- Mentor reviews progress and provides support when needed
+- Issues certificates and badges upon completion
+- Learning Service manages content and automated assessment
