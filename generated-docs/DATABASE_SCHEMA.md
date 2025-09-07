@@ -48,41 +48,39 @@ Dùng cho các chức năng tìm kiếm toàn văn và phân tích dữ liệu:
 ### Users Schema
 
 ```sql
+-- Roles Table
+CREATE TABLE roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    permissions JSONB, -- Store permissions as JSON array
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Users Table with direct role reference (1-N relationship)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
-    role VARCHAR(50) NOT NULL,
+    role_id UUID NOT NULL REFERENCES roles(id),
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE user_roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE user_permissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_id UUID NOT NULL REFERENCES user_roles(id),
-    permission VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(role_id, permission)
-);
-
-CREATE TABLE user_role_mappings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    role_id UUID NOT NULL REFERENCES user_roles(id),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, role_id)
-);
+-- Insert default roles
+INSERT INTO roles (name, description, permissions) VALUES 
+('admin', 'System Administrator', '["user:read", "user:write", "user:delete", "business:read", "business:write", "business:delete", "talent:read", "talent:write", "talent:delete", "project:read", "project:write", "project:delete", "system:admin"]'),
+('business_owner', 'Business Owner', '["user:read", "business:read", "business:write", "talent:read", "project:read", "project:write", "contract:read", "contract:write"]'),
+('business_manager', 'Business Manager', '["user:read", "business:read", "talent:read", "project:read", "project:write"]'),
+('talent', 'Talent/Developer', '["user:read", "user:write_own", "talent:read", "talent:write_own", "project:read", "skill:read", "course:read", "assessment:read"]'),
+('team_lead', 'Team Lead', '["user:read", "talent:read", "project:read", "project:write", "team:read", "team:write"]'),
+('hr_manager', 'HR Manager', '["user:read", "talent:read", "talent:write", "skill:read", "assessment:read", "training:read"]'),
+('instructor', 'Course Instructor', '["user:read", "course:read", "course:write", "assessment:read", "assessment:write", "student:read"]'),
+('student', 'Course Student', '["user:read", "user:write_own", "course:read", "assessment:read", "progress:read"]');
 ```
 
 ### Businesses Schema
@@ -1949,116 +1947,138 @@ CREATE INDEX idx_course_enrollments_status ON course_enrollments(status);
 }
 ```
 
-## 6. Sơ đồ ERD
+## 6. Sơ đồ ERD - Cập nhật đầy đủ
 
-### 6.1. Quản lý người dùng và phân quyền
+### 6.1. Tổng quan hệ thống
+
+```
+                    ┌─────────────────────────────┐
+                    │        CORE SYSTEM          │
+                    │                             │
+                    │  ┌─────────────────────┐    │
+                    │  │       USERS         │    │
+                    │  │   (Authentication)  │    │
+                    │  └─────────────────────┘    │
+                    │            │                │
+                    │            │                │
+                    │  ┌─────────┼─────────┐      │
+                    │  │         │         │      │
+                    │  ▼         ▼         ▼      │
+                    │ BUSINESSES TALENTS  ADMINS  │
+                    └─────────────────────────────┘
+                              │
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   FLOW 1-2      │  │   FLOW 3-4      │  │   FLOW 5-9      │
+│ Business &      │  │ ODC Teams &     │  │ Marketplace &   │
+│ Talent Mgmt     │  │ Projects        │  │ Learning        │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+```
+
+### 6.2. Quản lý người dùng và phân quyền (Đơn giản hóa: Role 1-N User)
 
 ```
 ┌─────────────────────────────┐       ┌─────────────────────────────┐
-│           USERS             │       │        USER_ROLES           │
+│           ROLES             │       │           USERS             │
 ├─────────────────────────────┤       ├─────────────────────────────┤
 │ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
-│  email (VARCHAR)            │       │  name (VARCHAR)             │
-│  password_hash (VARCHAR)    │       │  description (TEXT)         │
-│  full_name (VARCHAR)        │       │  created_at (TIMESTAMP)    │
-│  phone (VARCHAR)            │       │  updated_at (TIMESTAMP)    │
-│  role (VARCHAR)             │       └─────────────────────────────┘
-│  status (VARCHAR)           │                       │
-│  created_at (TIMESTAMP)     │                       │ 1
-│  updated_at (TIMESTAMP)     │                       │
-└─────────────────────────────┘                       │
-              │                                       │
-              │ 1                                     │
-              │                                       │
-              │                                       │ *
-              │               ┌─────────────────────────────┐
-              │               │    USER_ROLE_MAPPINGS       │
-              │               ├─────────────────────────────┤
-              │               │ *id (UUID) [PK]             │
-              └───────────────>│ *user_id (UUID) [FK]        │
-                              │ *role_id (UUID) [FK]        │<─────┘
-                              │  created_at (TIMESTAMP)    │
-                              └─────────────────────────────┘
-
-                              ┌─────────────────────────────┐
-                              │      USER_PERMISSIONS       │
-                              ├─────────────────────────────┤
-                              │ *id (UUID) [PK]             │
-                              │ *role_id (UUID) [FK]        │<─────┐
-                              │  permission (VARCHAR)       │      │
-                              │  created_at (TIMESTAMP)    │      │ *
-                              └─────────────────────────────┘      │
-                                                                   │
-                              ┌─────────────────────────────┐      │
-                              │        USER_ROLES           │      │
-                              │         (reference)         │──────┘
-                              └─────────────────────────────┘
+│  name (VARCHAR)             │       │  email (VARCHAR)            │
+│  description (TEXT)         │       │  password_hash (VARCHAR)    │
+│  permissions (JSONB)        │       │  full_name (VARCHAR)        │
+│  created_at (TIMESTAMP)     │       │  phone (VARCHAR)            │
+│  updated_at (TIMESTAMP)     │       │ *role_id (UUID) [FK]        │<──┐
+└─────────────────────────────┘       │  status (VARCHAR)           │   │
+              │                       │  created_at (TIMESTAMP)     │   │
+              │ 1                     │  updated_at (TIMESTAMP)     │   │
+              │                       └─────────────────────────────┘   │
+              │                                                         │
+              └─────────────────────────────────────────────────────────┘
+              
+              Mối quan hệ: 1 Role có thể có nhiều Users (1-N)
+              
+              Các roles có sẵn:
+              • admin - System Administrator
+              • business_owner - Business Owner  
+              • business_manager - Business Manager
+              • talent - Talent/Developer
+              • team_lead - Team Lead
+              • hr_manager - HR Manager
+              • instructor - Course Instructor
+              • student - Course Student
 ```
 
-### 6.2. Quản lý doanh nghiệp và yêu cầu
+### 6.3. FLOW 1: Business Onboarding và Registration
 
 ```
 ┌─────────────────────────────┐       ┌─────────────────────────────┐
-│         BUSINESSES          │       │           USERS             │
-├─────────────────────────────┤       │         (reference)         │
-│ *id (UUID) [PK]             │       └─────────────────────────────┘
-│  name (VARCHAR)             │                       │
-│  email (VARCHAR)            │                       │ 1
-│  phone (VARCHAR)            │                       │
-│  address (TEXT)             │                       │
-│  industry (VARCHAR)         │                       │ *
-│  size (VARCHAR)             │       ┌─────────────────────────────┐
-│  status (VARCHAR)           │       │      BUSINESS_CONTACTS      │
-│  created_at (TIMESTAMP)     │       ├─────────────────────────────┤
-│  updated_at (TIMESTAMP)     │       │ *id (UUID) [PK]             │
-└─────────────────────────────┘       │ *business_id (UUID) [FK]    │<──┐
-              │                       │ *user_id (UUID) [FK]        │   │
-              │ 1                     │  position (VARCHAR)         │   │
-              │                       │  is_primary (BOOLEAN)       │   │
-              │                       │  created_at (TIMESTAMP)    │   │
-              │                       │  updated_at (TIMESTAMP)    │   │
-              │                       └─────────────────────────────┘   │
-              │                                                         │
-              │ *                                                       │
-              │               ┌─────────────────────────────┐           │
-              │               │   BUSINESS_REQUIREMENTS     │           │
-              │               ├─────────────────────────────┤           │
-              │               │ *id (UUID) [PK]             │           │
-              └───────────────>│ *business_id (UUID) [FK]    │───────────┘
-                              │  title (VARCHAR)            │
-                              │  description (TEXT)         │
-                              │  team_size (INT)            │
-                              │  duration (VARCHAR)         │
-                              │  contract_type (VARCHAR)    │
-                              │  status (VARCHAR)           │
-                              │  created_at (TIMESTAMP)    │
-                              │  updated_at (TIMESTAMP)    │
-                              └─────────────────────────────┘
-                                            │
-                                            │ 1
-                                            │
-                                            │ *
-                              ┌─────────────────────────────┐
-                              │     REQUIREMENT_SKILLS      │
-                              ├─────────────────────────────┤
-                              │ *id (UUID) [PK]             │
-                              │ *requirement_id (UUID) [FK] │<─────┘
-                              │ *skill_id (UUID) [FK]       │<──┐
-                              │  experience_level (VARCHAR) │   │
-                              │  created_at (TIMESTAMP)    │   │
-                              └─────────────────────────────┘   │
-                                                                │
-                              ┌─────────────────────────────┐   │
-                              │           SKILLS            │   │
-                              │         (reference)         │───┘
-                              └─────────────────────────────┘
+│   BUSINESS_REGISTRATIONS    │       │         BUSINESSES          │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│  business_name (VARCHAR)    │       │ *registration_id (UUID) [FK]│<──┐
+│  business_email (VARCHAR)   │       │  name (VARCHAR)             │   │
+│  contact_person_name (VAR)  │       │  email (VARCHAR)            │   │
+│  contact_person_email (VAR) │       │  phone (VARCHAR)            │   │
+│  industry (VARCHAR)         │       │  address (TEXT)             │   │
+│  company_size (VARCHAR)     │       │  industry (VARCHAR)         │   │
+│  registration_documents     │       │  size (VARCHAR)             │   │
+│  status (VARCHAR)           │       │  verification_status (VAR)  │   │
+│  submitted_at (TIMESTAMP)   │       │  subscription_plan (VAR)    │   │
+│  reviewed_by (UUID) [FK]    │<──┐   │  lab_setup_completed (BOOL) │   │
+│  created_at (TIMESTAMP)     │   │   │  onboarding_completed (BOOL)│   │
+│  updated_at (TIMESTAMP)     │   │   │  status (VARCHAR)           │   │
+└─────────────────────────────┘   │   │  created_at (TIMESTAMP)     │   │
+              │                   │   │  updated_at (TIMESTAMP)     │   │
+              └───────────────────┼───└─────────────────────────────┘   │
+                                  │                   │               │
+                                  │                   │ 1             │
+                                  │                   │               │
+                                  │                   │ *             │
+              ┌─────────────────────────────┐         │   ┌─────────────────────────────┐
+              │           USERS             │         │   │      BUSINESS_CONTACTS      │
+              │         (reviewer)          │─────────┘   ├─────────────────────────────┤
+              └─────────────────────────────┘             │ *id (UUID) [PK]             │
+                                                          │ *business_id (UUID) [FK]    │<─┘
+                                                          │ *user_id (UUID) [FK]        │<──┐
+                                                          │  position (VARCHAR)         │   │
+                                                          │  is_primary (BOOLEAN)       │   │
+                                                          │  created_at (TIMESTAMP)    │   │
+                                                          │  updated_at (TIMESTAMP)    │   │
+                                                          └─────────────────────────────┘   │
+                                                                                            │
+              ┌─────────────────────────────┐                                             │
+              │           USERS             │                                             │
+              │        (contact user)       │─────────────────────────────────────────────┘
+              └─────────────────────────────┘
 
-┌─────────────────────────────┐
-│          CONTRACTS          │
-├─────────────────────────────┤
-│ *id (UUID) [PK]             │
-│ *business_id (UUID) [FK]    │──────> BUSINESSES
-│  requirement_id (UUID) [FK] │──────> BUSINESS_REQUIREMENTS
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│   BUSINESS_REQUIREMENTS     │       │     REQUIREMENT_SKILLS      │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *business_id (UUID) [FK]    │<──┐   │ *requirement_id (UUID) [FK] │<──┐
+│  title (VARCHAR)            │   │   │ *skill_id (UUID) [FK]       │<──┼─┐
+│  description (TEXT)         │   │   │  experience_level (VARCHAR) │   │ │
+│  team_size (INT)            │   │   │  created_at (TIMESTAMP)    │   │ │
+│  duration (VARCHAR)         │   │   └─────────────────────────────┘   │ │
+│  contract_type (VARCHAR)    │   │                                     │ │
+│  status (VARCHAR)           │   │   ┌─────────────────────────────┐   │ │
+│  created_at (TIMESTAMP)     │   │   │           SKILLS            │   │ │
+│  updated_at (TIMESTAMP)     │   │   ├─────────────────────────────┤   │ │
+└─────────────────────────────┘   │   │ *id (UUID) [PK]             │   │ │
+              │                   │   │  name (VARCHAR)             │   │ │
+              └───────────────────┘   │  category (VARCHAR)         │───┘ │
+                                      │  description (TEXT)         │     │
+                                      │  created_at (TIMESTAMP)    │     │
+                                      └─────────────────────────────┘     │
+                                                                          │
+┌─────────────────────────────┐                                         │
+│          CONTRACTS          │                                         │
+├─────────────────────────────┤                                         │
+│ *id (UUID) [PK]             │                                         │
+│ *business_id (UUID) [FK]    │──────> BUSINESSES                      │
+│  requirement_id (UUID) [FK] │──────> BUSINESS_REQUIREMENTS ──────────┘
 │  title (VARCHAR)            │
 │  description (TEXT)         │
 │  start_date (DATE)          │
@@ -2071,275 +2091,515 @@ CREATE INDEX idx_course_enrollments_status ON course_enrollments(status);
 └─────────────────────────────┘
 ```
 
-### 6.3. Quản lý Talent Pool và kỹ năng
+### 6.3. FLOW 2: Talent Management và Skill Assessment
 
 ```
 ┌─────────────────────────────┐       ┌─────────────────────────────┐
-│           USERS             │       │           SKILLS            │
-│         (reference)         │       ├─────────────────────────────┤
-└─────────────────────────────┘       │ *id (UUID) [PK]             │
-              │                       │  name (VARCHAR)             │
-              │ 1                     │  category (VARCHAR)         │
-              │                       │  description (TEXT)         │
-              │                       │  created_at (TIMESTAMP)    │
-              │ 1                     └─────────────────────────────┘
-              │                                     │
-┌─────────────────────────────┐                     │
-│          TALENTS            │                     │ 1
-├─────────────────────────────┤                     │
-│ *id (UUID) [PK]             │                     │
-│ *user_id (UUID) [FK]        │<────────────────────┘
-│  education_level (VARCHAR)  │                     │
-│  years_of_experience (INT)  │                     │ *
-│  availability (VARCHAR)     │       ┌─────────────────────────────┐
-│  status (VARCHAR)           │       │       TALENT_SKILLS         │
-│  created_at (TIMESTAMP)     │       ├─────────────────────────────┤
-│  updated_at (TIMESTAMP)     │       │ *id (UUID) [PK]             │
-└─────────────────────────────┘       │ *talent_id (UUID) [FK]      │<──┐
-              │                       │ *skill_id (UUID) [FK]       │   │
-              │ 1                     │  proficiency_level (INT)    │   │
-              │                       │  years_of_experience (DEC)  │   │
-              │                       │  verified (BOOLEAN)         │   │
-              │                       │  created_at (TIMESTAMP)    │   │
-              │                       │  updated_at (TIMESTAMP)    │   │
-              │                       └─────────────────────────────┘   │
-              │                                                         │
-              │ *                                                       │
-              │               ┌─────────────────────────────┐           │
-              │               │    TALENT_EVALUATIONS      │           │
-              │               ├─────────────────────────────┤           │
-              │               │ *id (UUID) [PK]             │           │
-              └───────────────>│ *talent_id (UUID) [FK]      │───────────┘
-                              │ *evaluator_id (UUID) [FK]   │<──┐
-                              │  evaluation_date (DATE)     │   │
-                              │  overall_score (DECIMAL)    │   │
-                              │  comments (TEXT)            │   │
-                              │  created_at (TIMESTAMP)    │   │
-                              └─────────────────────────────┘   │
-                                                                │
-                              ┌─────────────────────────────┐   │
-                              │           USERS             │   │
-                              │      (evaluator ref)        │───┘
-                              └─────────────────────────────┘
-```
-
-### 6.4. Quản lý ODC Team và dự án
-
-```
-┌─────────────────────────────┐    ┌─────────────────────────────┐
-│         BUSINESSES          │    │         CONTRACTS           │
-│         (reference)         │    │         (reference)         │
-└─────────────────────────────┘    └─────────────────────────────┘
-              │                                  │
-              │ 1                                │ 1
-              │                                  │
-              │                ┌─────────────────────────────┐
-              │                │         ODC_TEAMS           │
-              │                ├─────────────────────────────┤
-              │                │ *id (UUID) [PK]             │
-              └────────────────>│ *business_id (UUID) [FK]    │
-                               │  contract_id (UUID) [FK]    │<─┘
-                               │  name (VARCHAR)             │
-                               │  status (VARCHAR)           │
-                               │  created_at (TIMESTAMP)     │
-                               │  updated_at (TIMESTAMP)     │
-                               └─────────────────────────────┘
-                                         │
-                                         │ 1
-                    ┌────────────────────┼────────────────────┐
-                    │                    │                    │
-                    │ *                  │ *                  │ *
-      ┌─────────────────────────────┐    │    ┌─────────────────────────────┐
-      │       TEAM_MEMBERS          │    │    │       TEAM_MENTORS          │
-      ├─────────────────────────────┤    │    ├─────────────────────────────┤
-      │ *id (UUID) [PK]             │    │    │ *id (UUID) [PK]             │
-      │ *team_id (UUID) [FK]        │<───┘    │ *team_id (UUID) [FK]        │<─┐
-      │ *talent_id (UUID) [FK]      │<──┐     │ *mentor_id (UUID) [FK]      │<─┼─┐
-      │  role (VARCHAR)             │   │     │  start_date (DATE)          │  │ │
-      │  join_date (DATE)           │   │     │  end_date (DATE)            │  │ │
-      │  end_date (DATE)            │   │     │  created_at (TIMESTAMP)     │  │ │
-      │  status (VARCHAR)           │   │     │  updated_at (TIMESTAMP)     │  │ │
-      │  created_at (TIMESTAMP)     │   │     └─────────────────────────────┘  │ │
-      │  updated_at (TIMESTAMP)     │   │                                    │ │
-      └─────────────────────────────┘   │     ┌─────────────────────────────┐  │ │
-                                        │     │          TALENTS            │  │ │
-      ┌─────────────────────────────┐   │     │         (reference)         │──┘ │
-      │          PROJECTS           │   │     └─────────────────────────────┘    │
-      ├─────────────────────────────┤   │                                        │
-      │ *id (UUID) [PK]             │   │     ┌─────────────────────────────┐    │
-      │  name (VARCHAR)             │   │     │           USERS             │    │
-      │ *business_id (UUID) [FK]    │<──┼─────│         (reference)         │────┘
-      │  team_id (UUID) [FK]        │<──┘     └─────────────────────────────┘
-      │  description (TEXT)         │                           │
-      │  start_date (DATE)          │                           │ 1
-      │  end_date (DATE)            │                           │
-      │  status (VARCHAR)           │                           │
-      │  created_at (TIMESTAMP)     │                           │ *
-      │  updated_at (TIMESTAMP)     │         ┌─────────────────────────────┐
-      └─────────────────────────────┘         │       PROJECT_TASKS         │
-                    │                         ├─────────────────────────────┤
-                    │ 1                       │ *id (UUID) [PK]             │
-                    │                         │ *project_id (UUID) [FK]     │<─┐
-                    │ *                       │  title (VARCHAR)            │  │
-      ┌─────────────────────────────┐         │  description (TEXT)         │  │
-      │      PROJECT_REPORTS        │         │  assignee_id (UUID) [FK]    │<─┼─┘
-      ├─────────────────────────────┤         │  start_date (DATE)          │  │
-      │ *id (UUID) [PK]             │         │  due_date (DATE)            │  │
-      │ *project_id (UUID) [FK]     │<────────│  status (VARCHAR)           │  │
-      │ *reporter_id (UUID) [FK]    │<────────│  priority (VARCHAR)         │  │
-      │  report_date (DATE)         │         │  created_at (TIMESTAMP)     │  │
-      │  content (TEXT)             │         │  updated_at (TIMESTAMP)     │  │
-      │  status (VARCHAR)           │         └─────────────────────────────┘  │
-      │  created_at (TIMESTAMP)     │                                          │
-      │  updated_at (TIMESTAMP)     │                                          │
-      └─────────────────────────────┘                                          │
-                                                                               │
-                               ┌─────────────────────────────┐                │
-                               │           USERS             │                │
-                               │      (task assignee)        │────────────────┘
-                               └─────────────────────────────┘
-```
-
-### 6.5. Marketplace và Skill Matching
-
-```
-┌─────────────────────────────┐       ┌─────────────────────────────┐
-│         BUSINESSES          │       │           SKILLS            │
-│         (reference)         │       │         (reference)         │
-└─────────────────────────────┘       └─────────────────────────────┘
-              │                                     │
-              │ 1                                   │ 1
-              │                                     │
-              │                                     │ *
-              │ *               ┌─────────────────────────────┐
-┌─────────────────────────────┐ │  MARKETPLACE_PROJECT_SKILLS │
-│    MARKETPLACE_PROJECTS     │ ├─────────────────────────────┤
-├─────────────────────────────┤ │ *id (UUID) [PK]             │
-│ *id (UUID) [PK]             │ │ *project_id (UUID) [FK]     │<──┐
-│ *business_id (UUID) [FK]    │<┤ *skill_id (UUID) [FK]       │<──┼─┘
-│  title (VARCHAR)            │ │  created_at (TIMESTAMP)     │   │
-│  description (TEXT)         │ └─────────────────────────────┘   │
-│  budget_min (DECIMAL)       │                                   │
-│  budget_max (DECIMAL)       │                                   │
-│  duration (VARCHAR)         │                                   │
-│  status (VARCHAR)           │                                   │
-│  created_at (TIMESTAMP)     │                                   │
-│  updated_at (TIMESTAMP)     │                                   │
-└─────────────────────────────┘                                   │
-              │                                                   │
-              │ 1                                                 │
-              │                                                   │
-              │ *                                                 │
-┌─────────────────────────────┐       ┌─────────────────────────────┐
-│      MARKETPLACE_BIDS       │       │         ODC_TEAMS           │
-├─────────────────────────────┤       │         (reference)         │
-│ *id (UUID) [PK]             │       └─────────────────────────────┘
-│ *project_id (UUID) [FK]     │<──────────────────┘                 │
-│ *team_id (UUID) [FK]        │<────────────────────────────────────┘
-│  proposal (TEXT)            │
-│  price (DECIMAL)            │
-│  duration (VARCHAR)         │
-│  status (VARCHAR)           │
-│  created_at (TIMESTAMP)     │
-│  updated_at (TIMESTAMP)     │
-└─────────────────────────────┘
-
-┌─────────────────────────────┐       ┌─────────────────────────────┐
-│         BUSINESSES          │       │           SKILLS            │
-│         (reference)         │       │         (reference)         │
-└─────────────────────────────┘       └─────────────────────────────┘
-              │                                     │
-              │ 1                                   │ 1
-              │                                     │
-              │ *                                   │ *
-┌─────────────────────────────┐       ┌─────────────────────────────┐
-│       MATCHING_JOBS         │       │    MATCHING_JOB_SKILLS      │
+│     TALENT_APPLICATIONS     │       │          TALENTS            │
 ├─────────────────────────────┤       ├─────────────────────────────┤
 │ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
-│ *business_id (UUID) [FK]    │<──────│ *job_id (UUID) [FK]         │<─┐
-│  title (VARCHAR)            │       │ *skill_id (UUID) [FK]       │<─┼─┘
-│  description (TEXT)         │       │  importance (INT)           │  │
-│  team_size (INT)            │       │  min_proficiency (INT)      │  │
-│  duration (VARCHAR)         │       │  created_at (TIMESTAMP)     │  │
-│  status (VARCHAR)           │       └─────────────────────────────┘  │
-│  created_at (TIMESTAMP)     │                                        │
-│  updated_at (TIMESTAMP)     │                                        │
-└─────────────────────────────┘                                        │
-              │                                                        │
-              │ 1                                                      │
-              │                                                        │
-              │ *                                                      │
-┌─────────────────────────────┐       ┌─────────────────────────────┐  │
-│      MATCHING_RESULTS       │       │          TALENTS            │  │
-├─────────────────────────────┤       │         (reference)         │──┘
-│ *id (UUID) [PK]             │       └─────────────────────────────┘
-│ *job_id (UUID) [FK]         │<──────────────────┘
-│ *talent_id (UUID) [FK]      │<────────────────────────────────────┘
-│  match_score (DECIMAL)      │
-│  status (VARCHAR)           │
-│  created_at (TIMESTAMP)     │
-│  updated_at (TIMESTAMP)     │
+│  full_name (VARCHAR)        │       │ *application_id (UUID) [FK] │<──┐
+│  email (VARCHAR)            │       │ *user_id (UUID) [FK]        │<──┼─┐
+│  phone (VARCHAR)            │       │  full_name (VARCHAR)        │   │ │
+│  date_of_birth (DATE)       │       │  email (VARCHAR)            │   │ │
+│  education_level (VARCHAR)  │       │  phone (VARCHAR)            │   │ │
+│  years_of_experience (INT)  │       │  date_of_birth (DATE)       │   │ │
+│  cv_file_path (VARCHAR)     │       │  address (TEXT)             │   │ │
+│  portfolio_url (VARCHAR)    │       │  education_level (VARCHAR)  │   │ │
+│  cover_letter (TEXT)        │       │  years_of_experience (INT)  │   │ │
+│  preferred_work_type (VAR)  │       │  cv_file_path (VARCHAR)     │   │ │
+│  expected_salary (DECIMAL)  │       │  portfolio_url (VARCHAR)    │   │ │
+│  availability_date (DATE)   │       │  availability_status (VAR)  │   │ │
+│  status (VARCHAR)           │       │  hourly_rate (DECIMAL)      │   │ │
+│  submitted_at (TIMESTAMP)   │       │  preferred_work_type (VAR)  │   │ │
+│  reviewed_by (UUID) [FK]    │<──┐   │  lab_access_level (VARCHAR) │   │ │
+│  created_at (TIMESTAMP)     │   │   │  onboarding_completed (BOOL)│   │ │
+│  updated_at (TIMESTAMP)     │   │   │  status (VARCHAR)           │   │ │
+└─────────────────────────────┘   │   │  created_at (TIMESTAMP)    │   │ │
+              │                   │   │  updated_at (TIMESTAMP)    │   │ │
+              └───────────────────┼───└─────────────────────────────┘   │ │
+                                  │                   │               │ │
+                                  │                   │ 1             │ │
+                                  │                   │               │ │
+                                  │                   │ *             │ │
+              ┌─────────────────────────────┐         │   ┌─────────────────────────────┐ │
+              │           USERS             │         │   │       TALENT_SKILLS         │ │
+              │         (reviewer)          │─────────┘   ├─────────────────────────────┤ │
+              └─────────────────────────────┘             │ *id (UUID) [PK]             │ │
+                                                          │ *talent_id (UUID) [FK]      │<┘ │
+                                                          │ *skill_id (UUID) [FK]       │<──┼─┐
+                                                          │  proficiency_level (VARCHAR)│   │ │
+                                                          │  years_of_experience (INT)  │   │ │
+                                                          │  is_primary (BOOLEAN)       │   │ │
+                                                          │  created_at (TIMESTAMP)    │   │ │
+                                                          │  updated_at (TIMESTAMP)    │   │ │
+                                                          └─────────────────────────────┘   │ │
+                                                                                            │ │
+              ┌─────────────────────────────┐                                             │ │
+              │           USERS             │                                             │ │
+              │        (talent user)        │─────────────────────────────────────────────┘ │
+              └─────────────────────────────┘                                               │
+                                                                                            │
+┌─────────────────────────────┐       ┌─────────────────────────────┐                     │
+│     SKILL_ASSESSMENTS       │       │           SKILLS            │                     │
+├─────────────────────────────┤       ├─────────────────────────────┤                     │
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │                     │
+│ *talent_id (UUID) [FK]      │<──┐   │  name (VARCHAR)             │                     │
+│ *skill_id (UUID) [FK]       │<──┼───│  category (VARCHAR)         │─────────────────────┘
+│  assessment_type (VARCHAR)  │   │   │  description (TEXT)         │
+│  score (DECIMAL)            │   │   │  assessment_criteria (JSON) │
+│  max_score (DECIMAL)        │   │   │  created_at (TIMESTAMP)    │
+│  assessment_date (DATE)     │   │   │  updated_at (TIMESTAMP)    │
+│  assessor_id (UUID) [FK]    │<──┼─┐ └─────────────────────────────┘
+│  assessment_notes (TEXT)    │   │ │
+│  certificate_url (VARCHAR)  │   │ │ ┌─────────────────────────────┐
+│  validity_period (INT)      │   │ │ │     TRAINING_PROGRESS       │
+│  status (VARCHAR)           │   │ │ ├─────────────────────────────┤
+│  created_at (TIMESTAMP)     │   │ │ │ *id (UUID) [PK]             │
+│  updated_at (TIMESTAMP)     │   │ │ │ *talent_id (UUID) [FK]      │<─┘
+└─────────────────────────────┘   │ │ │ *course_id (UUID) [FK]      │<──┐
+                                  │ │ │  enrollment_date (DATE)     │   │
+              ┌─────────────────────────────┐ │  start_date (DATE)          │   │
+              │           USERS             │ │  completion_date (DATE)     │   │
+              │         (assessor)          │─┘  progress_percentage (INT) │   │
+              └─────────────────────────────┘    status (VARCHAR)           │   │
+                                                 │  final_score (DECIMAL)      │   │
+                                                 │  certificate_url (VARCHAR)  │   │
+                                                 │  created_at (TIMESTAMP)    │   │
+                                                 │  updated_at (TIMESTAMP)    │   │
+                                                 └─────────────────────────────┘   │
+                                                                                   │
+                                                 ┌─────────────────────────────┐   │
+                                                 │          COURSES            │   │
+                                                 ├─────────────────────────────┤   │
+                                                 │ *id (UUID) [PK]             │   │
+                                                 │  title (VARCHAR)            │───┘
+                                                 │  description (TEXT)         │
+                                                 │  provider (VARCHAR)         │
+                                                 │  duration_hours (INT)       │
+                                                 │  difficulty_level (VARCHAR) │
+                                                 │  created_at (TIMESTAMP)    │
+                                                 └─────────────────────────────┘
+```
+
+### 6.4. FLOW 3: ODC Team Formation và Project Management
+
+```
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│   TEAM_FORMATION_REQUESTS   │       │         ODC_TEAMS           │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *business_id (UUID) [FK]    │<──┐   │ *formation_request_id (FK)  │<──┐
+│ *requirement_id (UUID) [FK] │<──┼─┐ │ *business_id (UUID) [FK]    │<──┼─┐
+│  team_name (VARCHAR)        │   │ │ │  contract_id (UUID) [FK]    │<──┼─┼─┐
+│  team_size (INT)            │   │ │ │  name (VARCHAR)             │   │ │ │
+│  required_skills (JSON)     │   │ │ │  team_lead_id (UUID) [FK]   │<──┼─┼─┼─┐
+│  project_duration (VARCHAR) │   │ │ │  workspace_id (UUID) [FK]   │<──┼─┼─┼─┼─┐
+│  budget_allocated (DECIMAL) │   │ │ │  formation_date (DATE)      │   │ │ │ │ │
+│  priority_level (VARCHAR)   │   │ │ │  status (VARCHAR)           │   │ │ │ │ │
+│  requested_start_date (DATE)│   │ │ │  created_at (TIMESTAMP)     │   │ │ │ │ │
+│  status (VARCHAR)           │   │ │ │  updated_at (TIMESTAMP)     │   │ │ │ │ │
+│  approved_by (UUID) [FK]    │<──┼─┼─┼─└─────────────────────────────┘   │ │ │ │ │
+│  created_at (TIMESTAMP)     │   │ │ │                   │               │ │ │ │ │
+│  updated_at (TIMESTAMP)     │   │ │ │                   │ 1             │ │ │ │ │
+└─────────────────────────────┘   │ │ │                   │               │ │ │ │ │
+              │                   │ │ │                   │ *             │ │ │ │ │
+              └───────────────────┼─┼─┼───────────────────┼───────────────┼─┼─┼─┼─┼─┐
+                                  │ │ │   ┌─────────────────────────────┐ │ │ │ │ │ │
+              ┌─────────────────────────────┐ │       TEAM_MEMBERS          │ │ │ │ │ │ │
+              │         BUSINESSES          │ ├─────────────────────────────┤ │ │ │ │ │ │
+              │         (reference)         │─┘ *id (UUID) [PK]             │ │ │ │ │ │ │
+              └─────────────────────────────┘   │ *team_id (UUID) [FK]        │<┘ │ │ │ │ │
+                                              │ *talent_id (UUID) [FK]      │<──┼─┼─┼─┼─┼─┐
+              ┌─────────────────────────────┐   │  role_id (UUID) [FK]        │<──┼─┼─┼─┼─┼─┼─┐
+              │   BUSINESS_REQUIREMENTS     │   │  join_date (DATE)           │   │ │ │ │ │ │ │
+              │         (reference)         │───│  end_date (DATE)            │   │ │ │ │ │ │ │
+              └─────────────────────────────┘   │  performance_score (DEC)    │   │ │ │ │ │ │ │
+                                              │  status (VARCHAR)           │   │ │ │ │ │ │ │
+              ┌─────────────────────────────┐   │  created_at (TIMESTAMP)     │   │ │ │ │ │ │ │
+              │           USERS             │   │  updated_at (TIMESTAMP)     │   │ │ │ │ │ │ │
+              │         (approver)          │───└─────────────────────────────┘   │ │ │ │ │ │ │
+              └─────────────────────────────┘                                   │ │ │ │ │ │ │
+                                                                                │ │ │ │ │ │ │
+              ┌─────────────────────────────┐   ┌─────────────────────────────┐   │ │ │ │ │ │ │
+              │          CONTRACTS          │   │          TALENTS            │   │ │ │ │ │ │ │
+              │         (reference)         │───│         (reference)         │───┘ │ │ │ │ │ │
+              └─────────────────────────────┘   └─────────────────────────────┘     │ │ │ │ │ │
+                                                                                    │ │ │ │ │ │
+              ┌─────────────────────────────┐   ┌─────────────────────────────┐     │ │ │ │ │ │
+              │           USERS             │   │        TEAM_ROLES           │     │ │ │ │ │ │
+              │        (team lead)          │───├─────────────────────────────┤     │ │ │ │ │ │
+              └─────────────────────────────┘   │ *id (UUID) [PK]             │     │ │ │ │ │ │
+                                              │  name (VARCHAR)             │─────┘ │ │ │ │ │
+              ┌─────────────────────────────┐   │  description (TEXT)         │       │ │ │ │ │
+              │      TEAM_WORKSPACES        │   │  responsibilities (JSON)    │       │ │ │ │ │
+              ├─────────────────────────────┤   │  required_skills (JSON)     │       │ │ │ │ │
+              │ *id (UUID) [PK]             │   │  created_at (TIMESTAMP)     │       │ │ │ │ │
+              │  name (VARCHAR)             │───└─────────────────────────────┘       │ │ │ │ │
+              │  location (VARCHAR)         │                                         │ │ │ │ │
+              │  capacity (INT)             │                                         │ │ │ │ │
+              │  equipment_list (JSON)      │                                         │ │ │ │ │
+              │  availability_status (VAR)  │                                         │ │ │ │ │
+              │  created_at (TIMESTAMP)     │                                         │ │ │ │ │
+              └─────────────────────────────┘                                         │ │ │ │ │
+                                                                                      │ │ │ │ │
+┌─────────────────────────────┐       ┌─────────────────────────────┐               │ │ │ │ │
+│          PROJECTS           │       │       PROJECT_PHASES        │               │ │ │ │ │
+├─────────────────────────────┤       ├─────────────────────────────┤               │ │ │ │ │
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │               │ │ │ │ │
+│  name (VARCHAR)             │       │ *project_id (UUID) [FK]     │<──┐           │ │ │ │ │
+│ *business_id (UUID) [FK]    │<──────│  name (VARCHAR)             │   │           │ │ │ │ │
+│  team_id (UUID) [FK]        │<──────│  description (TEXT)         │   │           │ │ │ │ │
+│  contract_id (UUID) [FK]    │<──────│  start_date (DATE)          │   │           │ │ │ │ │
+│  description (TEXT)         │       │  end_date (DATE)            │   │           │ │ │ │ │
+│  methodology (VARCHAR)      │       │  status (VARCHAR)           │   │           │ │ │ │ │
+│  start_date (DATE)          │       │  deliverables (JSON)        │   │           │ │ │ │ │
+│  end_date (DATE)            │       │  created_at (TIMESTAMP)     │   │           │ │ │ │ │
+│  budget (DECIMAL)           │       │  updated_at (TIMESTAMP)     │   │           │ │ │ │ │
+│  status (VARCHAR)           │       └─────────────────────────────┘   │           │ │ │ │ │
+│  created_at (TIMESTAMP)     │                   │                     │           │ │ │ │ │
+│  updated_at (TIMESTAMP)     │                   │ 1                   │           │ │ │ │ │
+└─────────────────────────────┘                   │                     │           │ │ │ │ │
+              │                                   │ *                   │           │ │ │ │ │
+              │ 1                 ┌─────────────────────────────┐       │           │ │ │ │ │
+              │                   │       PROJECT_TASKS         │       │           │ │ │ │ │
+              │ *                 ├─────────────────────────────┤       │           │ │ │ │ │
+┌─────────────────────────────┐   │ *id (UUID) [PK]             │       │           │ │ │ │ │
+│     PROJECT_MILESTONES      │   │ *project_id (UUID) [FK]     │<──────┘           │ │ │ │ │
+├─────────────────────────────┤   │  phase_id (UUID) [FK]       │<──────────────────┘ │ │ │ │
+│ *id (UUID) [PK]             │   │  title (VARCHAR)            │                     │ │ │ │
+│ *project_id (UUID) [FK]     │<──│  description (TEXT)         │                     │ │ │ │
+│  name (VARCHAR)             │   │  assignee_id (UUID) [FK]    │<────────────────────┼─┼─┼─┼─┐
+│  description (TEXT)         │   │  start_date (DATE)          │                     │ │ │ │ │
+│  due_date (DATE)            │   │  due_date (DATE)            │                     │ │ │ │ │
+│  completion_date (DATE)     │   │  estimated_hours (INT)      │                     │ │ │ │ │
+│  status (VARCHAR)           │   │  actual_hours (INT)         │                     │ │ │ │ │
+│  deliverables (JSON)        │   │  status (VARCHAR)           │                     │ │ │ │ │
+│  created_at (TIMESTAMP)     │   │  priority (VARCHAR)         │                     │ │ │ │ │
+│  updated_at (TIMESTAMP)     │   │  created_at (TIMESTAMP)     │                     │ │ │ │ │
+└─────────────────────────────┘   │  updated_at (TIMESTAMP)     │                     │ │ │ │ │
+                                  └─────────────────────────────┘                     │ │ │ │ │
+                                                                                      │ │ │ │ │
+                                  ┌─────────────────────────────┐                     │ │ │ │ │
+                                  │           USERS             │                     │ │ │ │ │
+                                  │      (task assignee)        │─────────────────────┘ │ │ │ │
+                                  └─────────────────────────────┘                       │ │ │ │
+                                                                                        │ │ │ │
+                                  ┌─────────────────────────────┐                       │ │ │ │
+                                  │         BUSINESSES          │                       │ │ │ │
+                                  │         (reference)         │───────────────────────┘ │ │ │
+                                  └─────────────────────────────┘                         │ │ │
+                                                                                          │ │ │
+                                  ┌─────────────────────────────┐                         │ │ │
+                                  │          CONTRACTS          │                         │ │ │
+                                  │         (reference)         │─────────────────────────┘ │ │
+                                  └─────────────────────────────┘                           │ │
+                                                                                            │ │
+                                  ┌─────────────────────────────┐                           │ │
+                                  │          CONTRACTS          │                           │ │
+                                  │         (reference)         │───────────────────────────┘ │
+                                  └─────────────────────────────┘                             │
+                                                                                              │
+                                  ┌─────────────────────────────┐                             │
+                                  │          CONTRACTS          │                             │
+                                  │         (reference)         │─────────────────────────────┘
+                                  └─────────────────────────────┘
+```
+
+### 6.5. FLOW 4: Marketplace và Learning Platform
+
+```
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│     MARKETPLACE_PROJECTS    │       │    PROJECT_CATEGORIES       │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *business_id (UUID) [FK]    │<──┐   │  name (VARCHAR)             │
+│ *category_id (UUID) [FK]    │<──┼─┐ │  description (TEXT)         │
+│  title (VARCHAR)            │   │ │ │  parent_id (UUID) [FK]      │<─┐
+│  description (TEXT)         │   │ │ │  created_at (TIMESTAMP)     │  │
+│  required_skills (JSON)     │   │ │ │  updated_at (TIMESTAMP)     │  │
+│  budget_min (DECIMAL)       │   │ │ └─────────────────────────────┘  │
+│  budget_max (DECIMAL)       │   │ │                   │             │
+│  duration_weeks (INT)       │   │ │                   └─────────────┘
+│  project_type (VARCHAR)     │   │ │
+│  complexity_level (VARCHAR) │   │ │ ┌─────────────────────────────┐
+│  status (VARCHAR)           │   │ │ │         BUSINESSES          │
+│  posted_at (TIMESTAMP)      │   │ │ │         (reference)         │
+│  deadline (TIMESTAMP)       │   │ └─│                             │
+│  created_at (TIMESTAMP)     │   │   └─────────────────────────────┘
+│  updated_at (TIMESTAMP)     │   │
+└─────────────────────────────┘   │   ┌─────────────────────────────┐
+              │                   │   │   PROJECT_CATEGORIES        │
+              │ 1                 │   │         (reference)         │
+              │                   └───│                             │
+              │ *                     └─────────────────────────────┘
+┌─────────────────────────────┐
+│ MARKETPLACE_PROJECT_SKILLS  │       ┌─────────────────────────────┐
+├─────────────────────────────┤       │     MARKETPLACE_BIDS        │
+│ *id (UUID) [PK]             │       ├─────────────────────────────┤
+│ *project_id (UUID) [FK]     │<──┐   │ *id (UUID) [PK]             │
+│ *skill_id (UUID) [FK]       │<──┼─┐ │ *project_id (UUID) [FK]     │<──┐
+│  proficiency_level (VARCHAR)│   │ │ │ *talent_id (UUID) [FK]      │<──┼─┐
+│  is_required (BOOLEAN)      │   │ │ │  bid_amount (DECIMAL)       │   │ │
+│  weight (DECIMAL)           │   │ │ │  proposal_text (TEXT)       │   │ │
+│  created_at (TIMESTAMP)     │   │ │ │  estimated_duration (INT)   │   │ │
+└─────────────────────────────┘   │ │ │  portfolio_links (JSON)     │   │ │
+              │                   │ │ │  status (VARCHAR)           │   │ │
+              │ *                 │ │ │  submitted_at (TIMESTAMP)   │   │ │
+              │                   │ │ │  reviewed_at (TIMESTAMP)    │   │ │
+              │ 1                 │ │ │  created_at (TIMESTAMP)     │   │ │
+┌─────────────────────────────┐   │ │ │  updated_at (TIMESTAMP)     │   │ │
+│           SKILLS            │   │ │ └─────────────────────────────┘   │ │
+│         (reference)         │───┘ │                                   │ │
+└─────────────────────────────┘     │ ┌─────────────────────────────┐   │ │
+                                    │ │    PROJECT_PROPOSALS        │   │ │
+                                    │ ├─────────────────────────────┤   │ │
+                                    │ │ *id (UUID) [PK]             │   │ │
+                                    │ │ *project_id (UUID) [FK]     │<──┘ │
+                                    │ │ *talent_id (UUID) [FK]      │<────┼─┐
+                                    │ │  proposal_text (TEXT)       │     │ │
+                                    │ │  proposed_budget (DECIMAL)  │     │ │
+                                    │ │  estimated_timeline (INT)   │     │ │
+                                    │ │  technical_approach (TEXT)  │     │ │
+                                    │ │  deliverables (JSON)        │     │ │
+                                    │ │  status (VARCHAR)           │     │ │
+                                    │ │  submitted_at (TIMESTAMP)   │     │ │
+                                    │ │  created_at (TIMESTAMP)     │     │ │
+                                    │ │  updated_at (TIMESTAMP)     │     │ │
+                                    │ └─────────────────────────────┘     │ │
+                                    │                                     │ │
+                                    │ ┌─────────────────────────────┐     │ │
+                                    │ │          TALENTS            │     │ │
+                                    │ │         (reference)         │─────┘ │
+                                    │ └─────────────────────────────┘       │
+                                    │                                       │
+                                    │                                       │
+                                    └───────────────────────────────────────┘
+
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│   MARKETPLACE_CONTRACTS     │       │      ESCROW_PAYMENTS        │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *project_id (UUID) [FK]     │<──┐   │ *contract_id (UUID) [FK]    │<──┐
+│ *business_id (UUID) [FK]    │<──┼─┐ │ *milestone_id (UUID) [FK]   │<──┼─┐
+│ *talent_id (UUID) [FK]      │<──┼─┼─│  amount (DECIMAL)           │   │ │
+│  contract_value (DECIMAL)   │   │ │ │  payment_method (VARCHAR)   │   │ │
+│  payment_terms (TEXT)       │   │ │ │  transaction_id (VARCHAR)   │   │ │
+│  deliverables (JSON)        │   │ │ │  status (VARCHAR)           │   │ │
+│  start_date (DATE)          │   │ │ │  held_at (TIMESTAMP)        │   │ │
+│  end_date (DATE)            │   │ │ │  released_at (TIMESTAMP)    │   │ │
+│  status (VARCHAR)           │   │ │ │  created_at (TIMESTAMP)     │   │ │
+│  signed_at (TIMESTAMP)      │   │ │ │  updated_at (TIMESTAMP)     │   │ │
+│  created_at (TIMESTAMP)     │   │ │ └─────────────────────────────┘   │ │
+│  updated_at (TIMESTAMP)     │   │ │                                   │ │
+└─────────────────────────────┘   │ │ ┌─────────────────────────────┐   │ │
+              │                   │ │ │    PROJECT_MILESTONES       │   │ │
+              │ 1                 │ │ │         (reference)         │───┘ │
+              │                   │ │ └─────────────────────────────┘     │
+              │ *                 │ │                                     │
+┌─────────────────────────────┐   │ │ ┌─────────────────────────────┐     │
+│    MARKETPLACE_REVIEWS      │   │ │ │         BUSINESSES          │     │
+├─────────────────────────────┤   │ │ │         (reference)         │─────┘
+│ *id (UUID) [PK]             │   │ │ └─────────────────────────────┘
+│ *contract_id (UUID) [FK]    │<──┘ │
+│ *reviewer_id (UUID) [FK]    │<────┼─┐ ┌─────────────────────────────┐
+│ *reviewee_id (UUID) [FK]    │<────┼─┼─│          TALENTS            │
+│  rating (DECIMAL)           │     │ │ │         (reference)         │
+│  review_text (TEXT)         │     │ │ └─────────────────────────────┘
+│  review_type (VARCHAR)      │     │ │
+│  created_at (TIMESTAMP)     │     │ │
+│  updated_at (TIMESTAMP)     │     │ │
+└─────────────────────────────┘     │ │
+                                    │ │
+                                    │ │
+┌─────────────────────────────┐     │ │
+│           USERS             │     │ │
+│        (reviewer)           │─────┘ │
+└─────────────────────────────┘       │
+                                      │
+┌─────────────────────────────┐       │
+│           USERS             │       │
+│        (reviewee)           │───────┘
 └─────────────────────────────┘
 ```
 
-### 6.6. Nền tảng học tập
+### 6.6. FLOW 5: Learning Platform và Skill Development
 
 ```
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│          COURSES            │       │     COURSE_CATEGORIES       │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *instructor_id (UUID) [FK]  │<──┐   │  name (VARCHAR)             │
+│ *category_id (UUID) [FK]    │<──┼─┐ │  description (TEXT)         │
+│  title (VARCHAR)            │   │ │ │  parent_id (UUID) [FK]      │<─┐
+│  description (TEXT)         │   │ │ │  skill_mapping (JSON)       │  │
+│  learning_objectives (JSON) │   │ │ │  created_at (TIMESTAMP)     │  │
+│  prerequisites (JSON)       │   │ │ │  updated_at (TIMESTAMP)     │  │
+│  level (VARCHAR)            │   │ │ └─────────────────────────────┘  │
+│  duration_hours (INT)       │   │ │                   │             │
+│  price (DECIMAL)            │   │ │                   └─────────────┘
+│  certification_offered (BOOL)│  │ │
+│  max_students (INT)         │   │ │ ┌─────────────────────────────┐
+│  status (VARCHAR)           │   │ │ │           USERS             │
+│  published_at (TIMESTAMP)   │   │ │ │       (instructors)         │
+│  created_at (TIMESTAMP)     │   │ └─│                             │
+│  updated_at (TIMESTAMP)     │   │   └─────────────────────────────┘
+└─────────────────────────────┘   │
+              │                   │   ┌─────────────────────────────┐
+              │ 1                 │   │     COURSE_CATEGORIES       │
+              │                   │   │         (reference)         │
+              │ *                 └───│                             │
+┌─────────────────────────────┐       └─────────────────────────────┘
+│      COURSE_MODULES         │
+├─────────────────────────────┤       ┌─────────────────────────────┐
+│ *id (UUID) [PK]             │       │     COURSE_ENROLLMENTS      │
+│ *course_id (UUID) [FK]      │<──┐   ├─────────────────────────────┤
+│  title (VARCHAR)            │   │   │ *id (UUID) [PK]             │
+│  description (TEXT)         │   │   │ *user_id (UUID) [FK]        │<──┐
+│  learning_objectives (JSON) │   │   │ *course_id (UUID) [FK]      │<──┼─┐
+│  order_index (INT)          │   │   │  enrollment_type (VARCHAR)  │   │ │
+│  estimated_duration (INT)   │   │   │  payment_status (VARCHAR)   │   │ │
+│  is_mandatory (BOOLEAN)     │   │   │  enrolled_at (TIMESTAMP)    │   │ │
+│  created_at (TIMESTAMP)     │   │   │  started_at (TIMESTAMP)     │   │ │
+│  updated_at (TIMESTAMP)     │   │   │  completed_at (TIMESTAMP)   │   │ │
+└─────────────────────────────┘   │   │  progress_percentage (INT)  │   │ │
+              │                   │   │  current_module_id (UUID)   │   │ │
+              │ 1                 │   │  status (VARCHAR)           │   │ │
+              │                   │   │  certificate_issued (BOOL)  │   │ │
+              │ *                 │   │  created_at (TIMESTAMP)     │   │ │
+┌─────────────────────────────┐   │   │  updated_at (TIMESTAMP)     │   │ │
+│      COURSE_LESSONS         │   │   └─────────────────────────────┘   │ │
+├─────────────────────────────┤   │                                     │ │
+│ *id (UUID) [PK]             │   │   ┌─────────────────────────────┐   │ │
+│ *module_id (UUID) [FK]      │<──┘   │           USERS             │   │ │
+│  title (VARCHAR)            │       │        (students)           │───┘ │
+│  content_type (VARCHAR)     │       └─────────────────────────────┘     │
+│  content_url (VARCHAR)      │                                           │
+│  content_text (TEXT)        │                                           │
+│  duration_minutes (INT)     │                                           │
+│  order_index (INT)          │                                           │
+│  is_preview (BOOLEAN)       │                                           │
+│  quiz_questions (JSON)      │                                           │
+│  resources (JSON)           │                                           │
+│  created_at (TIMESTAMP)     │                                           │
+│  updated_at (TIMESTAMP)     │                                           │
+└─────────────────────────────┘                                           │
+              │                                                           │
+              │ 1                                                         │
+              │                                                           │
+              │ *                                                         │
+┌─────────────────────────────┐       ┌─────────────────────────────┐     │
+│     LEARNING_PROGRESS       │       │      SKILL_ASSESSMENTS      │     │
+├─────────────────────────────┤       ├─────────────────────────────┤     │
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │     │
+│ *user_id (UUID) [FK]        │<──────│ *user_id (UUID) [FK]        │<────┘
+│ *lesson_id (UUID) [FK]      │<──────│ *skill_id (UUID) [FK]       │<──┐
+│ *enrollment_id (UUID) [FK]  │<──┐   │  assessment_type (VARCHAR)  │   │
+│  started_at (TIMESTAMP)     │   │   │  score (DECIMAL)            │   │
+│  completed_at (TIMESTAMP)   │   │   │  max_score (DECIMAL)        │   │
+│  time_spent_minutes (INT)   │   │   │  passed (BOOLEAN)           │   │
+│  quiz_score (DECIMAL)       │   │   │  attempts (INT)             │   │
+│  quiz_attempts (INT)        │   │   │  assessment_data (JSON)     │   │
+│  notes (TEXT)               │   │   │  assessed_at (TIMESTAMP)    │   │
+│  status (VARCHAR)           │   │   │  valid_until (TIMESTAMP)    │   │
+│  created_at (TIMESTAMP)     │   │   │  created_at (TIMESTAMP)     │   │
+│  updated_at (TIMESTAMP)     │   │   │  updated_at (TIMESTAMP)     │   │
+└─────────────────────────────┘   │   └─────────────────────────────┘   │
+                                  │                                     │
+                                  │   ┌─────────────────────────────┐   │
+                                  │   │           SKILLS            │   │
+                                  │   │         (reference)         │───┘
+                                  │   └─────────────────────────────┘
+                                  │
+                                  │   ┌─────────────────────────────┐
+                                  │   │     COURSE_ENROLLMENTS      │
+                                  │   │         (reference)         │
+                                  └───│                             │
+                                      └─────────────────────────────┘
+
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│    COURSE_CERTIFICATES      │       │      TRAINING_PROGRESS      │
+├─────────────────────────────┤       ├─────────────────────────────┤
+│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
+│ *user_id (UUID) [FK]        │<──┐   │ *talent_id (UUID) [FK]      │<──┐
+│ *course_id (UUID) [FK]      │<──┼─┐ │ *skill_id (UUID) [FK]       │<──┼─┐
+│ *enrollment_id (UUID) [FK]  │<──┼─┼─│  training_type (VARCHAR)    │   │ │
+│  certificate_number (VARCHAR)│  │ │ │  current_level (VARCHAR)    │   │ │
+│  issued_at (TIMESTAMP)      │   │ │ │  target_level (VARCHAR)     │   │ │
+│  valid_until (TIMESTAMP)    │   │ │ │  progress_percentage (INT)  │   │ │
+│  verification_url (VARCHAR) │   │ │ │  hours_completed (DECIMAL)  │   │ │
+│  certificate_data (JSON)    │   │ │ │  last_activity (TIMESTAMP)  │   │ │
+│  created_at (TIMESTAMP)     │   │ │ │  status (VARCHAR)           │   │ │
+│  updated_at (TIMESTAMP)     │   │ │ │  created_at (TIMESTAMP)     │   │ │
+└─────────────────────────────┘   │ │ │  updated_at (TIMESTAMP)     │   │ │
+                                  │ │ └─────────────────────────────┘   │ │
+┌─────────────────────────────┐   │ │                                   │ │
+│           USERS             │   │ │ ┌─────────────────────────────┐   │ │
+│         (students)          │───┘ │ │          TALENTS            │   │ │
+└─────────────────────────────┘     │ │         (reference)         │───┘ │
+                                    │ └─────────────────────────────┘     │
+┌─────────────────────────────┐     │                                     │
+│          COURSES            │     │ ┌─────────────────────────────┐     │
+│         (reference)         │─────┘ │           SKILLS            │     │
+└─────────────────────────────┘       │         (reference)         │─────┘
+                                      └─────────────────────────────┘
 ┌─────────────────────────────┐
-│           USERS             │
+│     COURSE_ENROLLMENTS      │
 │         (reference)         │
 └─────────────────────────────┘
-              │
-              │ 1
-              │
-              │ *
-┌─────────────────────────────┐
-│          COURSES            │
-├─────────────────────────────┤
-│ *id (UUID) [PK]             │
-│  title (VARCHAR)            │
-│  description (TEXT)         │
-│  level (VARCHAR)            │
-│  duration (INT)             │
-│  status (VARCHAR)           │
-│  created_at (TIMESTAMP)     │
-│  updated_at (TIMESTAMP)     │
-└─────────────────────────────┘
-              │
-              │ 1
-    ┌─────────┼─────────┐
-    │         │         │
-    │ *       │ *       │
-┌─────────────────────────────┐       ┌─────────────────────────────┐
-│       COURSE_MODULES        │       │    COURSE_ENROLLMENTS      │
-├─────────────────────────────┤       ├─────────────────────────────┤
-│ *id (UUID) [PK]             │       │ *id (UUID) [PK]             │
-│ *course_id (UUID) [FK]      │<──────│ *course_id (UUID) [FK]      │<─┐
-│  title (VARCHAR)            │       │ *user_id (UUID) [FK]        │<─┼─┐
-│  description (TEXT)         │       │  enrollment_date (DATE)     │  │ │
-│  sequence_order (INT)       │       │  completion_date (DATE)     │  │ │
-│  created_at (TIMESTAMP)     │       │  status (VARCHAR)           │  │ │
-│  updated_at (TIMESTAMP)     │       │  created_at (TIMESTAMP)     │  │ │
-└─────────────────────────────┘       │  updated_at (TIMESTAMP)     │  │ │
-                                      └─────────────────────────────┘  │ │
-                                                                       │ │
-                              ┌─────────────────────────────┐          │ │
-                              │           USERS             │          │ │
-                              │        (student ref)        │──────────┘ │
-                              └─────────────────────────────┘            │
-                                                                         │
-                              ┌─────────────────────────────┐            │
-                              │           USERS             │            │
-                              │        (enrollee ref)       │────────────┘
-                              └─────────────────────────────┘
 ```
 ```
 
 ## 7. Kết luận
 
-Database schema được thiết kế để hỗ trợ đầy đủ các chức năng của nền tảng Lab-based ODC, với việc sử dụng UUID làm primary key cho tất cả các bảng để đảm bảo tính duy nhất và bảo mật. Việc phân chia dữ liệu vào các loại cơ sở dữ liệu khác nhau (PostgreSQL, MongoDB, Elasticsearch) giúp tối ưu hóa hiệu suất và khả năng mở rộng của hệ thống.
+Database schema này được thiết kế để hỗ trợ đầy đủ các chức năng của nền tảng ODC lab-based với ERD được cập nhật hoàn chỉnh:
 
-Schema này hỗ trợ đầy đủ các main flows đã được xác định, bao gồm onboarding doanh nghiệp, quản lý Talent Pool, thành lập và vận hành ODC Team, quản lý dự án, skill matching, marketplace cho mini-projects và nền tảng học tập tương tác.
+### 7.1. Tổng quan kiến trúc dữ liệu
+- **Sử dụng UUID**: Tất cả các bảng chính đều sử dụng UUID làm khóa chính để đảm bảo tính duy nhất và bảo mật
+- **Lựa chọn database**: 
+  - PostgreSQL cho dữ liệu quan hệ chính
+  - MongoDB cho dữ liệu phi cấu trúc (logs, analytics)
+  - Elasticsearch cho tìm kiếm và phân tích
 
-Các mối quan hệ giữa các bảng được thiết kế để đảm bảo tính toàn vẹn dữ liệu và hỗ trợ các truy vấn phức tạp. Các chỉ mục được tạo cho các cột thường xuyên được sử dụng trong các truy vấn để tối ưu hóa hiệu suất.
+### 7.2. Hỗ trợ 5 luồng chính với ERD đầy đủ
+1. **FLOW 1: Business Onboarding và Registration**
+   - Quản lý đăng ký doanh nghiệp với business_registrations
+   - Liên kết với contacts, requirements và contracts
+   - Hỗ trợ skill matching và requirement management
+
+2. **FLOW 2: Talent Management và Skill Assessment**
+   - Quản lý talent applications và skill assessments
+   - Theo dõi training progress và skill development
+   - Liên kết với learning platform và certification
+
+3. **FLOW 3: ODC Team Formation và Project Management**
+   - Quản lý team formation requests và team assignments
+   - Theo dõi project progress và deliverables
+   - Hỗ trợ resource allocation và performance tracking
+
+4. **FLOW 4: Marketplace và Learning Platform**
+   - Quản lý marketplace projects với categories và bidding
+   - Hỗ trợ project proposals và contract management
+   - Tích hợp escrow payments và dispute resolution
+
+5. **FLOW 5: Learning Platform và Skill Development**
+   - Quản lý courses với categories và instructors
+   - Theo dõi learning progress và assessments
+   - Hỗ trợ certification và skill validation
+
+### 7.3. Đảm bảo tính toàn vẹn và mở rộng
+- **Foreign key constraints**: Đảm bảo tính toàn vẹn dữ liệu giữa các bảng
+- **Validation rules**: Kiểm tra dữ liệu đầu vào và business logic
+- **Scalability**: Thiết kế hỗ trợ mở rộng theo chiều ngang
+- **Performance**: Tối ưu hóa với indexes và partitioning
+- **Security**: Implement row-level security và audit trails
+
+### 7.4. Tích hợp và API Support
+- **RESTful APIs**: Hỗ trợ đầy đủ CRUD operations
+- **GraphQL**: Flexible data querying cho frontend
+- **Real-time updates**: WebSocket support cho notifications
+- **Data analytics**: Integration với BI tools và reporting
+
+Schema này cung cấp nền tảng vững chắc cho việc phát triển và vận hành nền tảng ODC lab-based với khả năng mở rộng và bảo trì cao.
         
