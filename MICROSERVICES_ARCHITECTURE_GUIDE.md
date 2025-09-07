@@ -448,21 +448,29 @@ public class FileStorageService {
     </build>
     
     <modules>
-        <module>odc-common</module>
-        <module>user-service</module>
-        <module>talent-pool-service</module>
-        <module>business-service</module>
-        <module>odc-team-service</module>
-        <module>project-service</module>
-        <module>contract-service</module>
-        <module>skill-matching-service</module>
-        <module>marketplace-service</module>
-        <module>learning-service</module>
-        <module>notification-service</module>
-        <module>analytics-service</module>
-        <module>api-gateway</module>
-        <module>eureka-server</module>
-        <module>config-server</module>
+        <!-- Shared Libraries -->
+        <module>shared/odc-common</module>
+        <module>shared/odc-shared-models</module>
+        
+        <!-- Infrastructure Services -->
+        <module>infrastructure/supporting-services/api-gateway</module>
+        <module>infrastructure/supporting-services/eureka-server</module>
+        <module>infrastructure/supporting-services/config-server</module>
+        <module>infrastructure/supporting-services/notification-service</module>
+        
+        <!-- Core Business Services -->
+        <module>domain-services/core-business/user-service</module>
+        <module>domain-services/core-business/business-service</module>
+        <module>domain-services/core-business/talent-pool-service</module>
+        <module>domain-services/core-business/odc-team-service</module>
+        <module>domain-services/core-business/project-service</module>
+        <module>domain-services/core-business/contract-service</module>
+        
+        <!-- Advanced Feature Services -->
+        <module>domain-services/advanced-features/skill-matching-service</module>
+        <module>domain-services/advanced-features/marketplace-service</module>
+        <module>domain-services/advanced-features/learning-service</module>
+        <module>domain-services/advanced-features/analytics-service</module>
     </modules>
 </project>
 ```
@@ -677,57 +685,247 @@ public class FileStorageService {
 </project>
 ```
 
-### 📁 Standard Directory Structure
+### 📁 Organized Directory Structure
+
+#### 🎯 Lý Do Tổ Chức Cấu Trúc Mới
+
+Cấu trúc thư mục được tổ chức lại theo **Domain-Driven Design (DDD)** và **Separation of Concerns** để:
+
+1. **Tách biệt rõ ràng các loại services**:
+   - `shared/`: Các thư viện dùng chung
+   - `infrastructure/`: Các services hỗ trợ và tích hợp bên ngoài
+   - `domain-services/`: Các services nghiệp vụ chính
+
+2. **Dễ dàng quản lý và mở rộng**:
+   - Phân nhóm services theo chức năng
+   - Tách biệt core business và advanced features
+   - Tổ chức deployment và documentation riêng biệt
+
+3. **Cải thiện maintainability**:
+   - Giảm coupling giữa các modules
+   - Dễ dàng tìm kiếm và định vị code
+   - Hỗ trợ team development tốt hơn
+
+#### 📂 Chi Tiết Cấu Trúc
 
 ```
 odc-platform/
 ├── odc-parent/
 │   └── pom.xml
-├── odc-common/
-│   ├── pom.xml
-│   └── src/main/java/com/odc/common/
-│       ├── dto/
-│       │   ├── ApiResponse.java
-│       │   ├── PageResponse.java
-│       │   └── ErrorResponse.java
-│       ├── exception/
-│       │   ├── GlobalExceptionHandler.java
-│       │   ├── BusinessException.java
-│       │   └── ResourceNotFoundException.java
-│       ├── config/
-│       │   ├── JwtConfig.java
-│       │   └── CommonConfig.java
-│       └── util/
-│           ├── JwtUtil.java
-│           └── DateUtil.java
-├── user-service/
-│   ├── pom.xml
-│   ├── Dockerfile
-│   └── src/
-│       ├── main/
-│       │   ├── java/com/odc/user/
-│       │   │   ├── UserServiceApplication.java
-│       │   │   ├── config/
-│       │   │   ├── controller/
-│       │   │   ├── dto/
-│       │   │   ├── entity/
-│       │   │   ├── repository/
-│       │   │   ├── service/
-│       │   │   └── mapper/
-│       │   └── resources/
-│       │       ├── application.yml
-│       │       ├── bootstrap.yml
-│       │       └── db/migration/
-│       └── test/
-├── talent-pool-service/
-├── business-service/
-├── ... (other services)
-├── api-gateway/
-├── eureka-server/
-├── config-server/
-├── docker-compose.yml
+│
+├── shared/
+│   ├── odc-common/
+│   │   ├── pom.xml
+│   │   └── src/main/java/com/odc/common/
+│   │       ├── dto/
+│   │       │   ├── ApiResponse.java
+│   │       │   ├── PageResponse.java
+│   │       │   └── ErrorResponse.java
+│   │       ├── exception/
+│   │       │   ├── GlobalExceptionHandler.java
+│   │       │   ├── BusinessException.java
+│   │       │   └── ResourceNotFoundException.java
+│   │       ├── config/
+│   │       │   ├── JwtConfig.java
+│   │       │   └── CommonConfig.java
+│   │       ├── util/
+│   │       │   ├── JwtUtil.java
+│   │       │   └── DateUtil.java
+│   │       ├── security/
+│   │       │   ├── JwtAuthenticationFilter.java
+│   │       │   └── SecurityUtils.java
+│   │       └── constants/
+│   │           ├── ApiConstants.java
+│   │           └── ErrorCodes.java
+│   └── odc-shared-models/
+│       ├── pom.xml
+│       └── src/main/java/com/odc/shared/
+│           ├── events/
+│           │   ├── UserEvent.java
+│           │   ├── ProjectEvent.java
+│           │   └── TeamEvent.java
+│           └── enums/
+│               ├── UserRole.java
+│               ├── ProjectStatus.java
+│               └── SkillLevel.java
+│
+├── infrastructure/
+│   ├── supporting-services/
+│   │   ├── api-gateway/
+│   │   │   ├── pom.xml
+│   │   │   ├── Dockerfile
+│   │   │   └── src/
+│   │   │       ├── main/
+│   │   │       │   ├── java/com/odc/gateway/
+│   │   │       │   │   ├── GatewayApplication.java
+│   │   │       │   │   ├── config/
+│   │   │       │   │   ├── filter/
+│   │   │       │   │   └── security/
+│   │   │       │   └── resources/
+│   │   │       │       ├── application.yml
+│   │   │       │       └── bootstrap.yml
+│   │   │       └── test/
+│   │   ├── eureka-server/
+│   │   │   ├── pom.xml
+│   │   │   ├── Dockerfile
+│   │   │   └── src/
+│   │   │       ├── main/
+│   │   │       │   ├── java/com/odc/eureka/
+│   │   │       │   │   └── EurekaServerApplication.java
+│   │   │       │   └── resources/
+│   │   │       │       └── application.yml
+│   │   │       └── test/
+│   │   ├── config-server/
+│   │   │   ├── pom.xml
+│   │   │   ├── Dockerfile
+│   │   │   └── src/
+│   │   │       ├── main/
+│   │   │       │   ├── java/com/odc/config/
+│   │   │       │   │   └── ConfigServerApplication.java
+│   │   │       │   └── resources/
+│   │   │       │       ├── application.yml
+│   │   │       │       └── config-repo/
+│   │   │       └── test/
+│   │   └── notification-service/
+│   │       ├── pom.xml
+│   │       ├── Dockerfile
+│   │       └── src/
+│   │           ├── main/
+│   │           │   ├── java/com/odc/notification/
+│   │           │   │   ├── NotificationServiceApplication.java
+│   │           │   │   ├── config/
+│   │           │   │   ├── controller/
+│   │           │   │   ├── dto/
+│   │           │   │   ├── entity/
+│   │           │   │   ├── repository/
+│   │           │   │   ├── service/
+│   │           │   │   └── mapper/
+│   │           │   └── resources/
+│   │           │       ├── application.yml
+│   │           │       ├── bootstrap.yml
+│   │           │       └── db/migration/
+│   │           └── test/
+│   └── external-integrations/
+│       ├── payment-integration/
+│       ├── file-storage-integration/
+│       └── email-service-integration/
+│
+├── domain-services/
+│   ├── core-business/
+│   │   ├── user-service/
+│   │   │   ├── pom.xml
+│   │   │   ├── Dockerfile
+│   │   │   └── src/
+│   │   │       ├── main/
+│   │   │       │   ├── java/com/odc/user/
+│   │   │       │   │   ├── UserServiceApplication.java
+│   │   │       │   │   ├── config/
+│   │   │       │   │   ├── controller/
+│   │   │       │   │   ├── dto/
+│   │   │       │   │   ├── entity/
+│   │   │       │   │   ├── repository/
+│   │   │       │   │   ├── service/
+│   │   │       │   │   └── mapper/
+│   │   │       │   └── resources/
+│   │   │       │       ├── application.yml
+│   │   │       │       ├── bootstrap.yml
+│   │   │       │       └── db/migration/
+│   │   │       └── test/
+│   │   ├── business-service/
+│   │   ├── talent-pool-service/
+│   │   ├── odc-team-service/
+│   │   ├── project-service/
+│   │   └── contract-service/
+│   └── advanced-features/
+│       ├── skill-matching-service/
+│       ├── marketplace-service/
+│       ├── learning-service/
+│       └── analytics-service/
+│
+├── deployment/
+│   ├── docker-compose.yml
+│   ├── docker-compose.prod.yml
+│   ├── kubernetes/
+│   │   ├── namespace.yaml
+│   │   ├── configmaps/
+│   │   ├── secrets/
+│   │   └── services/
+│   └── scripts/
+│       ├── build-all.sh
+│       ├── deploy-dev.sh
+│       └── deploy-prod.sh
+│
+├── docs/
+│   ├── api-documentation/
+│   ├── deployment-guides/
+│   └── architecture-diagrams/
+│
 └── README.md
 ```
+
+#### 📋 Giải Thích Chi Tiết Các Thư Mục
+
+##### 🔗 `shared/` - Thư Viện Dùng Chung
+- **`odc-common/`**: Chứa các utilities, exceptions, configurations chung
+- **`odc-shared-models/`**: Chứa các events, enums, DTOs được chia sẻ giữa services
+
+##### 🏗️ `infrastructure/` - Hạ Tầng & Hỗ Trợ
+- **`supporting-services/`**: Các services hỗ trợ hệ thống
+  - `api-gateway/`: Cổng vào chính của hệ thống
+  - `eureka-server/`: Service discovery
+  - `config-server/`: Quản lý cấu hình tập trung
+  - `notification-service/`: Service thông báo đa kênh
+- **`external-integrations/`**: Tích hợp với các hệ thống bên ngoài
+  - `payment-integration/`: Tích hợp thanh toán (PayOS)
+  - `file-storage-integration/`: Tích hợp lưu trữ file (Cloudinary)
+  - `email-service-integration/`: Tích hợp email service
+
+##### 🎯 `domain-services/` - Services Nghiệp Vụ
+- **`core-business/`**: Các services nghiệp vụ cốt lõi
+  - `user-service/`: Quản lý người dùng và xác thực
+  - `business-service/`: Quản lý doanh nghiệp
+  - `talent-pool-service/`: Quản lý nhân tài
+  - `odc-team-service/`: Quản lý đội ODC
+  - `project-service/`: Quản lý dự án
+  - `contract-service/`: Quản lý hợp đồng
+- **`advanced-features/`**: Các tính năng nâng cao
+  - `skill-matching-service/`: AI matching kỹ năng
+  - `marketplace-service/`: Marketplace mini-projects
+  - `learning-service/`: Nền tảng học tập tương tác
+  - `analytics-service/`: Phân tích và báo cáo
+
+##### 🚀 `deployment/` - Triển Khai
+- **`docker-compose.yml`**: Môi trường development
+- **`docker-compose.prod.yml`**: Môi trường production
+- **`kubernetes/`**: Cấu hình K8s cho production
+- **`scripts/`**: Scripts tự động hóa build và deploy
+
+##### 📚 `docs/` - Tài Liệu
+- **`api-documentation/`**: Swagger/OpenAPI specs
+- **`deployment-guides/`**: Hướng dẫn triển khai
+- **`architecture-diagrams/`**: Sơ đồ kiến trúc
+
+#### ✅ Lợi Ích Của Cấu Trúc Mới
+
+1. **Tách biệt trách nhiệm rõ ràng**:
+   - Infrastructure team chỉ cần quan tâm `infrastructure/`
+   - Business team tập trung vào `domain-services/core-business/`
+   - Advanced team phát triển `domain-services/advanced-features/`
+
+2. **Deployment linh hoạt**:
+   - Có thể deploy từng nhóm services độc lập
+   - Dễ dàng scale theo nhu cầu
+   - Hỗ trợ CI/CD pipeline tốt hơn
+
+3. **Maintainability cao**:
+   - Code organization rõ ràng
+   - Giảm thiểu dependency conflicts
+   - Dễ dàng onboarding cho developer mới
+
+4. **Scalability tốt**:
+   - Dễ dàng thêm services mới
+   - Hỗ trợ microservices pattern
+   - Phù hợp với team lớn
 
 ## Deployment Strategy
 
