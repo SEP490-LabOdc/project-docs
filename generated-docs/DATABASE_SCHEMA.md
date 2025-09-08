@@ -815,8 +815,8 @@ CREATE TABLE marketplace_contracts (
     CHECK ((talent_id IS NOT NULL AND team_id IS NULL) OR (talent_id IS NULL AND team_id IS NOT NULL))
 );
 
--- Project Milestones for FLOW6 Support
-CREATE TABLE project_milestones (
+-- Marketplace Contract Milestones for FLOW6 Support
+CREATE TABLE marketplace_milestones (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     contract_id UUID NOT NULL REFERENCES marketplace_contracts(id),
     milestone_name VARCHAR(255) NOT NULL,
@@ -836,7 +836,7 @@ CREATE TABLE project_milestones (
 CREATE TABLE escrow_payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     contract_id UUID NOT NULL REFERENCES marketplace_contracts(id),
-    milestone_id UUID REFERENCES project_milestones(id),
+    milestone_id UUID REFERENCES marketplace_milestones(id),
     amount DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'USD',
     status VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending', 'deposited', 'released', 'refunded', 'disputed'
@@ -882,8 +882,8 @@ CREATE INDEX idx_marketplace_contracts_business_id ON marketplace_contracts(busi
 CREATE INDEX idx_marketplace_contracts_talent_id ON marketplace_contracts(talent_id);
 CREATE INDEX idx_marketplace_contracts_team_id ON marketplace_contracts(team_id);
 CREATE INDEX idx_marketplace_contracts_status ON marketplace_contracts(status);
-CREATE INDEX idx_project_milestones_contract_id ON project_milestones(contract_id);
-CREATE INDEX idx_project_milestones_status ON project_milestones(status);
+CREATE INDEX idx_marketplace_milestones_contract_id ON marketplace_milestones(contract_id);
+CREATE INDEX idx_marketplace_milestones_status ON marketplace_milestones(status);
 CREATE INDEX idx_escrow_payments_contract_id ON escrow_payments(contract_id);
 CREATE INDEX idx_escrow_payments_status ON escrow_payments(status);
 CREATE INDEX idx_marketplace_reviews_contract_id ON marketplace_reviews(contract_id);
@@ -2393,7 +2393,7 @@ CREATE INDEX idx_course_enrollments_status ON course_enrollments(status);
 │  created_at (TIMESTAMP)     │   │ │ └─────────────────────────────┘   │ │
 │  updated_at (TIMESTAMP)     │   │ │                                   │ │
 └─────────────────────────────┘   │ │ ┌─────────────────────────────┐   │ │
-              │                   │ │ │    PROJECT_MILESTONES       │   │ │
+              │                   │ │ │   MARKETPLACE_MILESTONES    │   │ │
               │ 1                 │ │ │         (reference)         │───┘ │
               │                   │ │ └─────────────────────────────┘     │
               │ *                 │ │                                     │
